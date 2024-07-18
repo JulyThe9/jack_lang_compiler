@@ -30,15 +30,61 @@ public:
         switch (token.tType)
         {
             case TokenTypes::tWHILE:
+                pState.curTokenId++;
                 pState.fsmCurState = ParseFsmStates::sWHILE;
                 break;
+        }
+    }
+
+    void parseExpr(const tokensVect &tokens, 
+        const identifierVect &identifiers, parserState &pState)
+    {
+        auto storedState = pState.fsmCurState;
+    
+        // checking if expr is finished
+        while (true)
+        {   
+            auto &token = tokens.at(pState.curTokenId);
+
+            // we hit the right bracket of while/if or the statement has ended with ;
+            if ((pState.getLayer() == 0 && token.tType != TokenTypes::tRBR)
+                || token.tType  == TokenTypes::tSEMICOLON)
+            {
+                break;
+            }
+
+            if (token.tType == TokenTypes::tNUMBER)
+            {
+                
+            }
+            else if (isopertator(token.tType))
+            {
+
+            }
+            else if (token.tType == TokenTypes::tLBR)
+            {
+                pState.incLayer();
+            }
+            else if (token.tType == TokenTypes::tRBR)
+            {
+                pState.decLayer();
+            }
+            // identifiers for later
+            //else if ()
         }
     }
 
     void whileStateBeh(const tokensVect &tokens, 
         const identifierVect &identifiers, parserState &pState)
     {
-        
+        auto token = tokens.at(pState.curTokenId);
+        if (token.tType != TokenTypes::tLBR)
+        {
+            // TODO: error
+            return;
+        }
+
+        parseExpr(tokens, identifiers, pState);
     }
 
     void whileCloseStateBeh(const tokensVect &tokens, 

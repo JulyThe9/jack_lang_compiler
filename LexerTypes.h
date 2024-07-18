@@ -105,8 +105,8 @@ enum class TokenTypes : unsigned int
     tRCURL,
     tCOMMA,
     tSEMICOLON,
-    tEQUAL,
     tACCESS,
+    tEQUAL,
     tPLUS,
     tMINUS,
     tMULT,
@@ -169,3 +169,8 @@ std::map<std::string, TokenTypes> tokenLookup
     {">", TokenTypes::tGT}
 
 };
+
+bool isopertator(TokenTypes tType)
+{
+    return tType >= TokenTypes::tPLUS && tType <= TokenTypes::tGT;
+}

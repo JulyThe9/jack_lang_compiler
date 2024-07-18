@@ -1,5 +1,9 @@
 #include <stack>
 
+// should be greater than the number of operators
+#define LAYER_INCR 10
+#define LAYER_DECR LAYER_INCR
+
 enum class ParseFsmStates : unsigned int
 {
     sINIT = 0,
@@ -16,8 +20,9 @@ public:
     AstNode(TokenTypes tType, int tVal) : TokenData(tType, tVal) {}
     AstNode(TokenTypes tType) : TokenData(tType) {}
 
-private:
-    std::vector<AstNode*> childNodes;
+
+    std::vector<AstNode*> nChildNodes;
+    std::optional<int> nPrecCoeff;      // relevant for operators only
 };
 
 struct parserState
@@ -39,5 +44,13 @@ struct parserState
         fsmFinished = false;
         fsmCurState = ParseFsmStates::sINIT;
         curTokenId  = 0;
+        layerCoeff = 0;
     }
+
+    int getLayer() {return layerCoeff;}
+    void incLayer() {layerCoeff+=LAYER_INCR;}
+    void decLayer() {layerCoeff-=LAYER_DECR;}
+
+private:
+    int layerCoeff = 0;
 };
