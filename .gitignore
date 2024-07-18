@@ -1,4 +1,4 @@
 *
-!Main.cpp
-!JackCompilerTypes.h
-!Utils.h
+!*.cpp
+!*.h
+!.gitignore

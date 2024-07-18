@@ -10,13 +10,14 @@
 
 #include "Utils.h"
 #include "JackCompilerTypes.h"
+#include "Parser.h"
 #include "/home/synthwave09/dev/nand2tetris/projects/06/UsefulString.h"
 
 #define DEBUG 1
 
 namespace fs = std::filesystem;
 
-class Parser
+class Lexer
 {
 private:
     std::string curLine;
@@ -95,7 +96,7 @@ public:
         return curLine;
     }
 
-    bool parseNextLine(std::ifstream *jackFile, parseState &pState)
+    bool lexeNextLine(std::ifstream *jackFile, lexerState &lexState)
     {
         std::string line;
         if (!std::getline(*jackFile, line))
@@ -104,15 +105,15 @@ public:
             return false;
         }
         std::cout << line << '\n';
-        return parseLine(line, pState);
+        return lexLine(line, lexState);
     }
 
-    void initStateBeh(UsefulString &ustr, parseState &pState)
+    void initStateBeh(UsefulString &ustr, lexerState &lexState)
     {
         ustr.skipSpaces();
         if (ustr.isEol())
         {
-            pState.fsmFinished = true;
+            lexState.fsmFinished = true;
             return;
         }
 
@@ -120,26 +121,26 @@ public:
         if (isalpha(c) || c == '_')
         {
             ustr.fwd();
-            pState.addBuff(c);
-            pState.fsmCurState = FsmStates::sLETTERS;
+            lexState.addBuff(c);
+            lexState.fsmCurState = LexFsmStates::sLETTERS;
         }
         else if (isdigit(c))
         {
             ustr.fwd();
-            pState.addBuff(c);
-            pState.fsmCurState = FsmStates::sDIGITS;
+            lexState.addBuff(c);
+            lexState.fsmCurState = LexFsmStates::sDIGITS;
         }
         else
         {
             // epsilon transition
-            pState.fsmCurState = FsmStates::sSYMBOL;
+            lexState.fsmCurState = LexFsmStates::sSYMBOL;
         }
     }
-    void lettersStateBeh(UsefulString &ustr, parseState &pState)
+    void lettersStateBeh(UsefulString &ustr, lexerState &lexState)
     {
         if (ustr.isEol())
         {
-            pState.fsmFinished = true;
+            lexState.fsmFinished = true;
             return;
         }
 
@@ -147,26 +148,26 @@ public:
         if (isalpha(c) || c == '_')
         {
             ustr.fwd();
-            pState.addBuff(c);
-            pState.fsmCurState = FsmStates::sLETTERS;
+            lexState.addBuff(c);
+            lexState.fsmCurState = LexFsmStates::sLETTERS;
         }
         else if (isdigit(c))
         {
             ustr.fwd();
-            pState.addBuff(c);
-            pState.fsmCurState = FsmStates::sDIGITS_AFTER_ALPHA;
+            lexState.addBuff(c);
+            lexState.fsmCurState = LexFsmStates::sDIGITS_AFTER_ALPHA;
         }
         else
         {
             // epsilon transition
-            pState.fsmCurState = FsmStates::sSYMBOL;
+            lexState.fsmCurState = LexFsmStates::sSYMBOL;
         }
     }
-    void digitsAfterAlphaStateBeh(UsefulString &ustr, parseState &pState)
+    void digitsAfterAlphaStateBeh(UsefulString &ustr, lexerState &lexState)
     {
         if (ustr.isEol())
         {
-            pState.fsmFinished = true;
+            lexState.fsmFinished = true;
             return;
         }
 
@@ -174,26 +175,26 @@ public:
         if (isdigit(c))
         {
             ustr.fwd();
-            pState.addBuff(c);
-            pState.fsmCurState = FsmStates::sDIGITS_AFTER_ALPHA;
+            lexState.addBuff(c);
+            lexState.fsmCurState = LexFsmStates::sDIGITS_AFTER_ALPHA;
         }
         else if (isalpha(c) || c == '_')
         {
             ustr.fwd();
-            pState.addBuff(c);
-            pState.fsmCurState = FsmStates::sLETTERS;
+            lexState.addBuff(c);
+            lexState.fsmCurState = LexFsmStates::sLETTERS;
         }
         else
         {
             // epsilon transition
-            pState.fsmCurState = FsmStates::sSYMBOL;
+            lexState.fsmCurState = LexFsmStates::sSYMBOL;
         }
     }
-    void digitsStateBeh(UsefulString &ustr, parseState &pState)
+    void digitsStateBeh(UsefulString &ustr, lexerState &lexState)
     {
         if (ustr.isEol())
         {
-            pState.fsmFinished = true;
+            lexState.fsmFinished = true;
             return;
         }
 
@@ -201,25 +202,25 @@ public:
         if (isdigit(c))
         {
             ustr.fwd();
-            pState.addBuff(c);
-            pState.fsmCurState = FsmStates::sDIGITS;
+            lexState.addBuff(c);
+            lexState.fsmCurState = LexFsmStates::sDIGITS;
         }
         else
         {
             // epsilon transition
-            pState.fsmCurState = FsmStates::sSYMBOL;
+            lexState.fsmCurState = LexFsmStates::sSYMBOL;
         }
     }
 
-    void handleBuffer(parseState &pState)
+    void handleBuffer(lexerState &lexState)
     {
-        std::string inBuff(pState.buffer, pState.bIdx);
+        std::string inBuff(lexState.buffer, lexState.bIdx);
         tokenMapIter it = tokenLookup.find(inBuff);
         
         // known keyword
         if (it != tokenLookup.end())
         {
-            pState.tokens.push_back(it->second);
+            lexState.tokens.push_back(it->second);
             return;
         }
 
@@ -228,35 +229,35 @@ public:
         int num = strtol(inBuff.c_str(), &pEnd, 10);
         if (!*pEnd)
         {
-            pState.tokens.emplace_back(TokenTypes::tNUMBER, num);
+            lexState.tokens.emplace_back(TokenTypes::tNUMBER, num);
             return;
         }
 
-        const auto identPosNum = vectContains(pState.identifiers, inBuff);
+        const auto identPosNum = vectContains(lexState.identifiers, inBuff);
         // known identifier
         if (identPosNum >= 0)
         {
-            pState.tokens.emplace_back(TokenTypes::tIDENTIFIER, identPosNum);
+            lexState.tokens.emplace_back(TokenTypes::tIDENTIFIER, identPosNum);
         }
         else
         {
-            pState.identifiers.push_back(inBuff);
-            pState.tokens.emplace_back(TokenTypes::tIDENTIFIER, pState.identifiers.size()-1);
+            lexState.identifiers.push_back(inBuff);
+            lexState.tokens.emplace_back(TokenTypes::tIDENTIFIER, lexState.identifiers.size()-1);
         }
     }
 
-    void symbolStateBeh(UsefulString &ustr, parseState &pState)
+    void symbolStateBeh(UsefulString &ustr, lexerState &lexState)
     {
-        if (!pState.buffEmpty())
+        if (!lexState.buffEmpty())
         {
-            handleBuffer(pState);
-            pState.flush();
+            handleBuffer(lexState);
+            lexState.flush();
         }
 
         ustr.skipSpaces();
         if (ustr.isEol())
         {
-            pState.fsmFinished = true;
+            lexState.fsmFinished = true;
             return;
         }
 
@@ -264,14 +265,14 @@ public:
         if (isalpha(c) || c == '_' || isdigit(c))
         {
             // epsilon transition
-            pState.fsmCurState = FsmStates::sINIT;
+            lexState.fsmCurState = LexFsmStates::sINIT;
             return;
         }
 
         if (c == '/')
         {
             ustr.fwd();
-            pState.fsmCurState = FsmStates::sCOMMENT;
+            lexState.fsmCurState = LexFsmStates::sCOMMENT;
             return;
         }
 
@@ -280,24 +281,24 @@ public:
         //tUNKNOWN_SYMBOL
         if (it != tokenLookup.end())
         {
-            pState.tokens.push_back(it->second);
+            lexState.tokens.push_back(it->second);
         }
         else
         {
-            pState.tokens.push_back(TokenTypes::tUNKNOWN_SYMBOL);
+            lexState.tokens.push_back(TokenTypes::tUNKNOWN_SYMBOL);
         }
 
         ustr.fwd();
         // epsilon transition
-        pState.fsmCurState = FsmStates::sSYMBOL;
+        lexState.fsmCurState = LexFsmStates::sSYMBOL;
     }
 
-    void commentStateBeh(UsefulString &ustr, parseState &pState)
+    void commentStateBeh(UsefulString &ustr, lexerState &lexState)
     {
         if (ustr.isEol())
         {
-            pState.tokens.push_back(TokenTypes::tDIV);
-            pState.fsmFinished = true;
+            lexState.tokens.push_back(TokenTypes::tDIV);
+            lexState.fsmFinished = true;
             return;
         }
         
@@ -305,31 +306,31 @@ public:
         // no more tokens on this line, finishing
         if (c == '/')
         {
-            pState.commentOpen = true;
-            pState.fsmFinished = true;
+            lexState.commentOpen = true;
+            lexState.fsmFinished = true;
         }
         else if (c == '*')
         {
-            pState.commentOpen = true;
-            pState.mlineComment = true;
+            lexState.commentOpen = true;
+            lexState.mlineComment = true;
 
             ustr.fwd();
-            pState.fsmCurState = FsmStates::sMLINE_COMMENT;
+            lexState.fsmCurState = LexFsmStates::sMLINE_COMMENT;
         }
         else
         {
-            pState.tokens.push_back(TokenTypes::tDIV);
+            lexState.tokens.push_back(TokenTypes::tDIV);
 
             ustr.fwd();
-            pState.fsmCurState = FsmStates::sSYMBOL;
+            lexState.fsmCurState = LexFsmStates::sSYMBOL;
         }
     }
 
-    void mlineCommentStateBeh(UsefulString &ustr, parseState &pState)
+    void mlineCommentStateBeh(UsefulString &ustr, lexerState &lexState)
     {
         if (ustr.isEol())
         {
-            pState.fsmFinished = true;
+            lexState.fsmFinished = true;
             return;
         }
 
@@ -357,73 +358,73 @@ public:
 
         if (commentClosed)
         {
-            pState.commentOpen = false;
-            pState.mlineComment = false;
+            lexState.commentOpen = false;
+            lexState.mlineComment = false;
             
             ustr.fwd();
-            pState.fsmCurState = FsmStates::sINIT;
+            lexState.fsmCurState = LexFsmStates::sINIT;
         }
     }
 
-    bool parseLine(const std::string &line, parseState &pState)
+    bool lexLine(const std::string &line, lexerState &lexState)
     {
         UsefulString ustr(line);
-        while (!pState.fsmFinished)
+        while (!lexState.fsmFinished)
         {
-            switch (pState.fsmCurState)
+            switch (lexState.fsmCurState)
             {
-            case FsmStates::sINIT:
+            case LexFsmStates::sINIT:
                 std::cout << "sINIT hits\n";
-                initStateBeh(ustr, pState);
+                initStateBeh(ustr, lexState);
                 break;
 
-            case FsmStates::sLETTERS:
+            case LexFsmStates::sLETTERS:
                 std::cout << "sLETTERS hits\n";
-                lettersStateBeh(ustr, pState);
+                lettersStateBeh(ustr, lexState);
                 break;
 
-            case FsmStates::sDIGITS_AFTER_ALPHA:
+            case LexFsmStates::sDIGITS_AFTER_ALPHA:
                 std::cout << "sDIGITS_AFTER_ALPHA hits\n";
-                digitsAfterAlphaStateBeh(ustr, pState);
+                digitsAfterAlphaStateBeh(ustr, lexState);
                 break;
 
-            case FsmStates::sDIGITS:
+            case LexFsmStates::sDIGITS:
                 std::cout << "sDIGITS hits\n";
-                digitsStateBeh(ustr, pState);
+                digitsStateBeh(ustr, lexState);
                 break;
 
-            case FsmStates::sSYMBOL:
+            case LexFsmStates::sSYMBOL:
                 std::cout << "sSYMBOL hits\n";
-                symbolStateBeh(ustr, pState);
+                symbolStateBeh(ustr, lexState);
                 break;
 
-            case FsmStates::sCOMMENT:
+            case LexFsmStates::sCOMMENT:
                 std::cout << "sCOMMENT hits\n";
-                commentStateBeh(ustr, pState);
+                commentStateBeh(ustr, lexState);
                 break;
 
-            case FsmStates::sMLINE_COMMENT:
+            case LexFsmStates::sMLINE_COMMENT:
                 std::cout << "sMLINE_COMMENT hits\n";
-                mlineCommentStateBeh(ustr, pState);
+                mlineCommentStateBeh(ustr, lexState);
                 break;
             }
         }
 
-        if (!pState.buffEmpty())
+        if (!lexState.buffEmpty())
         {
-            handleBuffer(pState);
+            handleBuffer(lexState);
         }
 
         std::cout << "Finished parsing\n";
-        std::cout << "Got this many tokens now: " << pState.tokens.size() << '\n';\
+        std::cout << "Got this many tokens now: " << lexState.tokens.size() << '\n';\
         return true;
     }
 };
 
 bool compilerCtrl(const char *pathIn, const char *pathOut)
 {
-    Parser parser;
-    if (!parser.init(pathIn))
+    Lexer lexer;
+    if (!lexer.init(pathIn))
     {
         // error
         return 1;
@@ -453,7 +454,7 @@ bool compilerCtrl(const char *pathIn, const char *pathOut)
         std::cout << '\n';
     };
 
-    for (const auto &filePath : parser.getFilePaths())
+    for (const auto &filePath : lexer.getFilePaths())
     {
         std::ifstream jackFile;
         jackFile.open(filePath, std::ios::in);
@@ -461,28 +462,28 @@ bool compilerCtrl(const char *pathIn, const char *pathOut)
             continue;
 
         std::cout << filePath << '\n';
-        parser.setCurFileName(filePath);
+        lexer.setCurFileName(filePath);
 
-        parseState pState;
-        while (parser.getMoreLinesComing())
+        lexerState lexState;
+        while (lexer.getMoreLinesComing())
         {
-            const bool res = parser.parseNextLine(&jackFile, pState);
+            const bool res = lexer.lexeNextLine(&jackFile, lexState);
 
             // TODO: needed?
             // parsing of the current line failed
             if (!res)
             {
-                pState.reset();
+                lexState.reset();
                 continue;
             }
 
 #ifdef DEBUG
-            printTokens(pState.tokens);
-            printIdentifiers(pState.identifiers);
+            printTokens(lexState.tokens);
+            printIdentifiers(lexState.identifiers);
 #endif
-            pState.reset();
+            lexState.reset();
         }
-        parser.resetForFile();
+        lexer.resetForFile();
         jackFile.close();
     }
 

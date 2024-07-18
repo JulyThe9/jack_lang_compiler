@@ -1,3 +1,6 @@
+#ifndef _UTILS_
+#define _UTILS_
+
 #include <vector>
 
 template<typename T>
@@ -12,3 +15,5 @@ int vectContains(const std::vector<T> &vect, const T &val)
     }
     return -1; // Return -1 if not found
 }
+
+#endif
