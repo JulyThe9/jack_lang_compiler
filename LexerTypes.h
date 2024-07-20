@@ -72,7 +72,8 @@ struct TokenData
 enum class TokenTypes : unsigned int
 {
     // alphabetic keywords
-    tCLASS = 0,
+    tUNDEFINED = 0,
+    tCLASS,
     tCONSTRUCTOR,
     tMETHOD,
     tFUNCTION,

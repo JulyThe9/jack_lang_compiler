@@ -13,6 +13,7 @@
 #include "Parser.h"
 #include "/home/synthwave09/dev/nand2tetris/projects/06/UsefulString.h"
 
+// CONTROL
 #define DEBUG 1
 
 namespace fs = std::filesystem;
@@ -489,6 +490,15 @@ bool compilerCtrl(const char *pathIn, const char *pathOut)
 
     return true;
 }
+
+#ifdef DEBUG_m
+void arena_alloc_test()
+{
+    ArenaAllocator<AstNode> aralloc(5);
+    AstNode *anode = ALLOC_AST_NODE(TokenTypes::tNUMBER, 28);
+    AstNode *anode2 = ALLOC_AST_NODE(TokenTypes::tNUMBER, 560);
+}
+#endif
 
 int main(int argc, char *argv[])
 {

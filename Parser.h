@@ -7,37 +7,40 @@
 
 #include "Utils.h"
 #include "JackCompilerTypes.h"
-//#include "ArenaAllocator.h"
+#include "ArenaAllocator.h"
+
+// HELPER MACROS
+#define ALLOC_AST_NODE new (aralloc.allocate()) AstNode
 
 class Parser
 {
 private:
+    // IMPORTANT: 200 node limit so far
+    ArenaAllocator<AstNode> aralloc{ArenaAllocator<AstNode>(200)};
 public:
 
-    void initStateBeh(const tokensVect &tokens, 
-        const identifierVect &identifiers, parserState &pState)
+    void initStateBeh(parserState &pState)
     {
-        //pState.astRoot = arAlloc.allocate();
+        pState.astRoot = ALLOC_AST_NODE();
+        pState.pendParentNodes.push(pState.astRoot);
 
         // TEMPORARY:
         pState.fsmCurState = ParseFsmStates::sSTATEMENT;
     }
 
-    void statementStateBeh(const tokensVect &tokens, 
-        const identifierVect &identifiers, parserState &pState)
+    void statementStateBeh(parserState &pState)
     {
+        // START FROM HERE
         auto token = tokens.at(pState.curTokenId);
         switch (token.tType)
         {
             case TokenTypes::tWHILE:
-                pState.curTokenId++;
                 pState.fsmCurState = ParseFsmStates::sWHILE;
                 break;
         }
     }
 
-    void parseExpr(const tokensVect &tokens, 
-        const identifierVect &identifiers, parserState &pState)
+    void parseExpr(parserState &pState)
     {
         auto storedState = pState.fsmCurState;
     
@@ -74,34 +77,39 @@ public:
         }
     }
 
-    void whileStateBeh(const tokensVect &tokens, 
-        const identifierVect &identifiers, parserState &pState)
+    void whileStateBeh(parserState &pState)
     {
-        auto token = tokens.at(pState.curTokenId);
-        if (token.tType != TokenTypes::tLBR)
+        TokenData *token = &(tokens[pState.curTokenId]);
+
+        auto *astNodeWhile = ALLOC_AST_NODE(token->tType);
+        pState.addStackTopChild(astNodeWhile);
+        pState.addStackTop(astNodeWhile);
+
+        pState.curTokenId++;
+        token = &(tokens.at(pState.curTokenId));
+
+        if (token->tType != TokenTypes::tLBR)
         {
             // TODO: error
             return;
         }
 
-        parseExpr(tokens, identifiers, pState);
+        parseExpr(pState);
     }
 
-    void whileCloseStateBeh(const tokensVect &tokens, 
-        const identifierVect &identifiers, parserState &pState)
+    void whileCloseStateBeh(parserState &pState)
     {
         
     }
 
-    void exprStateBeh(const tokensVect &tokens, 
-        const identifierVect &identifiers, parserState &pState)
+    void exprStateBeh(parserState &pState)
     {
         
     }
 
     void buildAST(tokensVect &tokens, identifierVect &identifiers)
     {
-        parserState pState;
+        parserState pState(tokens, identifiers);
 
         while (!pState.fsmFinished)
         {
@@ -109,27 +117,27 @@ public:
             {
             case ParseFsmStates::sINIT:
                 std::cout << "sINIT hits\n";
-                initStateBeh(tokens, identifiers, pState);
+                initStateBeh(pState);
                 break;
 
             case ParseFsmStates::sSTATEMENT:
                 std::cout << "sSTATEMENT hits\n";
-                statementStateBeh(tokens, identifiers, pState);
+                statementStateBeh(pState);
                 break;
 
             case ParseFsmStates::sWHILE:
                 std::cout << "sWHILE hits\n";
-                whileStateBeh(tokens, identifiers, pState);
+                whileStateBeh(pState);
                 break;
 
             case ParseFsmStates::sWHILE_CLOSE:
                 std::cout << "sWHILE_CLOSE hits\n";
-                whileCloseStateBeh(tokens, identifiers, pState);
+                whileCloseStateBeh(pState);
                 break;
             
             case ParseFsmStates::sEXPR:
                 std::cout << "sEXPR hits\n";
-                exprStateBeh(tokens, identifiers, pState);
+                exprStateBeh(pState);
                 break;
             }
         }
