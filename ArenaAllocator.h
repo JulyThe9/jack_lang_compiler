@@ -24,7 +24,7 @@ public:
             {
                 break;
             }
-#ifdef DEBUG
+#ifdef MISC_DEBUG
             std::cout << (void*)(m_buffer + i) << '\n';
 #endif
 

@@ -8,6 +8,7 @@
 #include "Utils.h"
 #include "JackCompilerTypes.h"
 #include "ArenaAllocator.h"
+#include "DEBUG_CONTROL.h"
 
 // HELPER MACROS
 #define ALLOC_AST_NODE new (aralloc.allocate()) AstNode
@@ -16,22 +17,28 @@ class Parser
 {
 private:
     // IMPORTANT: 200 node limit so far
-    ArenaAllocator<AstNode> aralloc{ArenaAllocator<AstNode>(200)};
+    ArenaAllocator<AstNode> aralloc{ArenaAllocator<AstNode>(MAX_EXPTECTE_AST_NODES)};
+    AstNode* astRoot;
+
+    inline AstNode *createAstNode(parserState &pState, TokenData &token)
+    {
+        AstNode *astNode = ALLOC_AST_NODE(token);
+        pState.addStackTopChild(astNode);
+        pState.addStackTop(astNode);
+        return astNode;
+    }
+
 public:
 
     void initStateBeh(parserState &pState)
     {
-        pState.astRoot = ALLOC_AST_NODE();
-        pState.pendParentNodes.push(pState.astRoot);
-
         // TEMPORARY:
         pState.fsmCurState = ParseFsmStates::sSTATEMENT;
     }
 
     void statementStateBeh(parserState &pState)
     {
-        // START FROM HERE
-        auto token = tokens.at(pState.curTokenId);
+        auto &token = pState.getCurToken();
         switch (token.tType)
         {
             case TokenTypes::tWHILE:
@@ -44,13 +51,13 @@ public:
     {
         auto storedState = pState.fsmCurState;
     
+        AstNode *curTermNode = NULL;
         // checking if expr is finished
         while (true)
         {   
-            auto &token = tokens.at(pState.curTokenId);
-
+            auto &token = pState.getCurToken();
             // we hit the right bracket of while/if or the statement has ended with ;
-            if ((pState.getLayer() == 0 && token.tType != TokenTypes::tRBR)
+            if ((pState.getLayer() == 0 && token.tType == TokenTypes::tRPR)
                 || token.tType  == TokenTypes::tSEMICOLON)
             {
                 break;
@@ -58,43 +65,88 @@ public:
 
             if (token.tType == TokenTypes::tNUMBER)
             {
-                
+                curTermNode = ALLOC_AST_NODE(token);
             }
-            else if (isopertator(token.tType))
+            // arrays for later
+            else if (token.tType == TokenTypes::tIDENTIFIER)
             {
-
+                curTermNode = ALLOC_AST_NODE(token);
             }
-            else if (token.tType == TokenTypes::tLBR)
+            else if (isoperator(token.tType))
+            {
+                // stack top (potentially operator)
+                auto &stackTop = pState.getStackTop();
+                // current token (operator) as AST node
+                // commin for the following two cases and needed for greaterPreced,\
+                // so carried placed here
+                auto *operNode = ALLOC_AST_NODE(token, pState.getLayer());
+
+                // start of the expression, parent is while, for or general stms
+                if (!isoperator(stackTop.tType) || greaterPreced(*operNode, stackTop))
+                {       
+                    operNode->addChild(curTermNode);
+                    pState.addStackTop(operNode);      
+                    pState.advance();
+                    continue;
+                }
+
+                stackTop.addChild(curTermNode);
+                operNode->addChild(&stackTop);
+                pState.popStackTop();
+                pState.addStackTop(operNode);
+            }
+            else if (token.tType == TokenTypes::tLPR)
             {
                 pState.incLayer();
             }
-            else if (token.tType == TokenTypes::tRBR)
+            else if (token.tType == TokenTypes::tRPR)
             {
                 pState.decLayer();
             }
-            // identifiers for later
-            //else if ()
+            // array
+            else if (token.tType == TokenTypes::tLBR)
+            {
+                auto *arrayNode = ALLOC_AST_NODE(TokenTypes::tARRAY);
+                arrayNode->addChild(curTermNode);
+                pState.addStackTop(arrayNode);
+            }
+            else if (token.tType == TokenTypes::tRBR)
+            {
+
+            }
+
+            pState.advance();
+        }
+
+        auto *stackTop = &(pState.getStackTop());
+        stackTop->addChild(curTermNode);    
+
+        // questionable
+        while (isoperator(stackTop->tType))
+        {
+            auto *lastStackTop = stackTop;
+            pState.popStackTop();
+            stackTop = &(pState.getStackTop()); 
+            stackTop->addChild(lastStackTop);
         }
     }
 
     void whileStateBeh(parserState &pState)
     {
-        TokenData *token = &(tokens[pState.curTokenId]);
+        auto &whileToken = pState.getCurToken();
+        createAstNode(pState, whileToken);
 
-        auto *astNodeWhile = ALLOC_AST_NODE(token->tType);
-        pState.addStackTopChild(astNodeWhile);
-        pState.addStackTop(astNodeWhile);
-
-        pState.curTokenId++;
-        token = &(tokens.at(pState.curTokenId));
-
-        if (token->tType != TokenTypes::tLBR)
+        auto &token = pState.advanceAndGet();
+        if (token.tType != TokenTypes::tLPR)
         {
             // TODO: error
             return;
         }
-
+        pState.advance();
         parseExpr(pState);
+#ifdef DEBUG
+        pState.fsmFinished = true;
+#endif
     }
 
     void whileCloseStateBeh(parserState &pState)
@@ -107,39 +159,65 @@ public:
         
     }
 
-    void buildAST(tokensVect &tokens, identifierVect &identifiers)
+    AstNode *buildAST(tokensVect &tokens, identifierVect &identifiers)
     {
         parserState pState(tokens, identifiers);
+        astRoot = ALLOC_AST_NODE();
+        pState.addStackTop(astRoot);
 
+        std::stringstream debug_strm;
         while (!pState.fsmFinished)
         {
+            debug_strm.str(std::string());
             switch (pState.fsmCurState)
             {
             case ParseFsmStates::sINIT:
-                std::cout << "sINIT hits\n";
+                debug_strm << "sINIT hits\n";
                 initStateBeh(pState);
                 break;
 
             case ParseFsmStates::sSTATEMENT:
-                std::cout << "sSTATEMENT hits\n";
+                debug_strm << "sSTATEMENT hits\n";
                 statementStateBeh(pState);
                 break;
 
             case ParseFsmStates::sWHILE:
-                std::cout << "sWHILE hits\n";
+                debug_strm << "sWHILE hits\n";
                 whileStateBeh(pState);
                 break;
 
             case ParseFsmStates::sWHILE_CLOSE:
-                std::cout << "sWHILE_CLOSE hits\n";
+                debug_strm << "sWHILE_CLOSE hits\n";
                 whileCloseStateBeh(pState);
                 break;
             
             case ParseFsmStates::sEXPR:
-                std::cout << "sEXPR hits\n";
+                debug_strm << "sEXPR hits\n";
                 exprStateBeh(pState);
                 break;
             }
+#ifdef DEBUG
+            std::cout << debug_strm.str();
+#endif
+
         }
+
+        return astRoot;
     }
+
+#ifdef DEBUG
+    void printAST()
+    {
+        std::cout << '\n';
+        printAST(astRoot);
+    }
+    void printAST(AstNode *curRoot)
+    {
+        for (auto childNode : curRoot->nChildNodes)
+        {
+            printAST(childNode);
+        }
+        curRoot->print();
+    }
+#endif
 };

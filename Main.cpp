@@ -11,10 +11,8 @@
 #include "Utils.h"
 #include "JackCompilerTypes.h"
 #include "Parser.h"
+#include "DEBUG_CONTROL.h"
 #include "/home/synthwave09/dev/nand2tetris/projects/06/UsefulString.h"
-
-// CONTROL
-#define DEBUG 1
 
 namespace fs = std::filesystem;
 
@@ -97,7 +95,7 @@ public:
         return curLine;
     }
 
-    bool lexeNextLine(std::ifstream *jackFile, lexerState &lexState)
+    bool lexNextLine(std::ifstream *jackFile, lexerState &lexState)
     {
         std::string line;
         if (!std::getline(*jackFile, line))
@@ -370,17 +368,20 @@ public:
     bool lexLine(const std::string &line, lexerState &lexState)
     {
         UsefulString ustr(line);
+
+        std::stringstream debug_strm;
         while (!lexState.fsmFinished)
         {
+            debug_strm.str(std::string());
             switch (lexState.fsmCurState)
             {
             case LexFsmStates::sINIT:
-                std::cout << "sINIT hits\n";
+                debug_strm << "sINIT hits\n";
                 initStateBeh(ustr, lexState);
                 break;
 
             case LexFsmStates::sLETTERS:
-                std::cout << "sLETTERS hits\n";
+                debug_strm << "sLETTERS hits\n";
                 lettersStateBeh(ustr, lexState);
                 break;
 
@@ -390,37 +391,51 @@ public:
                 break;
 
             case LexFsmStates::sDIGITS:
-                std::cout << "sDIGITS hits\n";
+                debug_strm << "sDIGITS hits\n";
                 digitsStateBeh(ustr, lexState);
                 break;
 
             case LexFsmStates::sSYMBOL:
-                std::cout << "sSYMBOL hits\n";
+                debug_strm << "sSYMBOL hits\n";
                 symbolStateBeh(ustr, lexState);
                 break;
 
             case LexFsmStates::sCOMMENT:
-                std::cout << "sCOMMENT hits\n";
+                debug_strm << "sCOMMENT hits\n";
                 commentStateBeh(ustr, lexState);
                 break;
 
             case LexFsmStates::sMLINE_COMMENT:
-                std::cout << "sMLINE_COMMENT hits\n";
+                debug_strm << "sMLINE_COMMENT hits\n";
                 mlineCommentStateBeh(ustr, lexState);
                 break;
             }
+#ifdef LEXER_DEBUG
+            std::cout << debug_strm.str();
+#endif
         }
 
         if (!lexState.buffEmpty())
         {
             handleBuffer(lexState);
         }
-
+#ifdef LEXER_DEBUG
         std::cout << "Finished parsing\n";
-        std::cout << "Got this many tokens now: " << lexState.tokens.size() << '\n';\
+        std::cout << "Got this many tokens now: " << lexState.tokens.size() << '\n';
+#endif
         return true;
     }
 };
+
+// BY COPY BECAUSE WE DON'T WANT TO RELY ON LEXSTATE AT THIS POINT
+void parserCtrl(tokensVect tokens, identifierVect identifiers)
+{
+    Parser parser;
+    parser.buildAST(tokens, identifiers);
+#ifdef DEBUG
+    parser.printAST();
+#endif
+}
 
 bool compilerCtrl(const char *pathIn, const char *pathOut)
 {
@@ -455,6 +470,8 @@ bool compilerCtrl(const char *pathIn, const char *pathOut)
         std::cout << '\n';
     };
 
+    // TODO: make sure multiple files (still) work
+    lexerState lexState;
     for (const auto &filePath : lexer.getFilePaths())
     {
         std::ifstream jackFile;
@@ -465,10 +482,11 @@ bool compilerCtrl(const char *pathIn, const char *pathOut)
         std::cout << filePath << '\n';
         lexer.setCurFileName(filePath);
 
-        lexerState lexState;
+        // NOTE: used to be here
+        //lexerState lexState;
         while (lexer.getMoreLinesComing())
         {
-            const bool res = lexer.lexeNextLine(&jackFile, lexState);
+            const bool res = lexer.lexNextLine(&jackFile, lexState);
 
             // TODO: needed?
             // parsing of the current line failed
@@ -478,7 +496,7 @@ bool compilerCtrl(const char *pathIn, const char *pathOut)
                 continue;
             }
 
-#ifdef DEBUG
+#ifdef LEXER_DEBUG
             printTokens(lexState.tokens);
             printIdentifiers(lexState.identifiers);
 #endif
@@ -488,10 +506,12 @@ bool compilerCtrl(const char *pathIn, const char *pathOut)
         jackFile.close();
     }
 
+    parserCtrl(lexState.tokens, lexState.identifiers);
+
     return true;
 }
 
-#ifdef DEBUG_m
+#ifdef DEBUG
 void arena_alloc_test()
 {
     ArenaAllocator<AstNode> aralloc(5);

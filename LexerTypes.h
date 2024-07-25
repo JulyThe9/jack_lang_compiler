@@ -1,3 +1,5 @@
+#include "DEBUG_CONTROL.h"
+
 enum class LexFsmStates : unsigned int
 {
     sINIT = 0,
@@ -121,7 +123,10 @@ enum class TokenTypes : unsigned int
     tIDENTIFIER,
     tNUMBER,
 
-    tUNKNOWN_SYMBOL
+    tUNKNOWN_SYMBOL,
+    
+    // AST-SPECIFIC
+    tARRAY, // array node
 };
 
 std::map<std::string, TokenTypes> tokenLookup
@@ -169,9 +174,28 @@ std::map<std::string, TokenTypes> tokenLookup
     {"<", TokenTypes::tLT},
     {">", TokenTypes::tGT}
 
+#ifdef DEBUG    
+    ,
+    {"_ROOT_", TokenTypes::tUNDEFINED},
+    {"NUMBER", TokenTypes::tNUMBER},
+    {"IDENTIFIER", TokenTypes::tIDENTIFIER},
+    {"ARRAY NODE", TokenTypes::tARRAY}
+#endif
 };
 
-bool isopertator(TokenTypes tType)
+bool isoperator(TokenTypes tType)
 {
     return tType >= TokenTypes::tPLUS && tType <= TokenTypes::tGT;
 }
+
+#ifdef DEBUG
+std::string emptyStr("");
+const std::string &tokenLookupFindByVal(TokenTypes tType)
+{
+    for (auto it = tokenLookup.begin(); it != tokenLookup.end(); ++it)
+        if (it->second == tType)
+            return it->first;
+
+    return emptyStr;
+}
+#endif
