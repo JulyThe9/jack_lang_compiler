@@ -511,15 +511,6 @@ bool compilerCtrl(const char *pathIn, const char *pathOut)
     return true;
 }
 
-#ifdef DEBUG
-void arena_alloc_test()
-{
-    ArenaAllocator<AstNode> aralloc(5);
-    AstNode *anode = ALLOC_AST_NODE(TokenTypes::tNUMBER, 28);
-    AstNode *anode2 = ALLOC_AST_NODE(TokenTypes::tNUMBER, 560);
-}
-#endif
-
 int main(int argc, char *argv[])
 {
     if (argc < 3)

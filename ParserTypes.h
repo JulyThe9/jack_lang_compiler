@@ -94,6 +94,12 @@ bool greaterPreced(const AstNode &t1, const AstNode &t2)
     return (itr1->second + t1.nPrecCoeff > itr2->second + t2.nPrecCoeff);
 }
 
+bool isconnectornode(TokenTypes tType)
+{
+    // also statements
+    return tType == TokenTypes::tARRAY;
+}
+
 struct parserState
 {
 private:
@@ -134,9 +140,10 @@ public:
     {
         pendParentNodes.push(newTop);
     }
-    void popStackTop()
+    bool popStackTop()
     {
         pendParentNodes.pop();
+        return true;
     }
     AstNode &getStackTop()
     {

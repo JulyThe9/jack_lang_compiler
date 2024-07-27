@@ -2,7 +2,7 @@
 #define _DEBUG_CONTROL_
 
 
-#define DEBUG_m 1
+#define DEBUG 1
 #define LEXER_DEBUG_m 1
 #define MISC_DEBUG_m 1
 

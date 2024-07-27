@@ -112,7 +112,17 @@ public:
             }
             else if (token.tType == TokenTypes::tRBR)
             {
-
+                AstNode *stackTop = NULL;
+                do 
+                {
+                    stackTop = &(pState.getStackTop());
+                    stackTop->addChild(curTermNode);
+                    curTermNode = stackTop;
+                    pState.popStackTop();
+                }
+                while (stackTop->tType != TokenTypes::tARRAY);
+                assert(stackTop->tType == TokenTypes::tARRAY);
+                curTermNode = stackTop;
             }
 
             pState.advance();
@@ -122,7 +132,7 @@ public:
         stackTop->addChild(curTermNode);    
 
         // questionable
-        while (isoperator(stackTop->tType))
+        while (isoperator(stackTop->tType) || isconnectornode(stackTop->tType))
         {
             auto *lastStackTop = stackTop;
             pState.popStackTop();
