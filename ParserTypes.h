@@ -11,9 +11,11 @@
 enum class ParseFsmStates : unsigned int
 {
     sINIT = 0,
-    sSTATEMENT,
+    sSTATEMENT_DECIDE,
     sWHILE,
-    sWHILE_CLOSE,
+    sBLOCK_CLOSE,
+    sIF,
+    sELSE,
     sEXPR
 };
 
@@ -33,9 +35,23 @@ std::map<TokenTypes, int> precedLookup
 
 };
 
+/*
+
+WHILE -> "lbl{" , "EXPR" , "JUMP" , STATEMENTS
+
+*/
+
 struct AstNode : TokenData
 {
 private:
+    // tbh trivial method, could return true for all and
+    // generate whatever is in the "generation map file"
+    // which would have empty values for these keys
+    static bool checkGeneratesCode(TokenTypes tType)
+    {
+        return tType != TokenTypes::tSTATEMENTS &&
+            tType != TokenTypes::tROOT;
+    }
     static int assignId()
     {
         static int idPool = 0;
@@ -43,10 +59,22 @@ private:
     }
 public:
     // any extra fields?
-    explicit AstNode(TokenData &token) : TokenData(token) { nID = assignId(); }
-    AstNode(TokenData &token, int precCoeff) : TokenData(token), nPrecCoeff(precCoeff) { nID = assignId(); }
-    AstNode(TokenTypes tType) : TokenData(tType) { nID = assignId(); }
-    AstNode() : TokenData(TokenTypes::tUNDEFINED) { nID = assignId(); }
+    explicit AstNode(TokenData &token) : TokenData(token), nID(assignId()), 
+        generatesCode(checkGeneratesCode(token.tType))
+    {}
+
+    AstNode(TokenData &token, int precCoeff) : TokenData(token), nPrecCoeff(precCoeff), nID(assignId()),
+        generatesCode(checkGeneratesCode(token.tType))
+    {}
+
+    AstNode(TokenTypes tType) : TokenData(tType), nID(assignId()),
+        generatesCode(checkGeneratesCode(tType))
+    {}
+
+    AstNode() : TokenData(TokenTypes::tROOT), nID(assignId()), 
+        generatesCode(checkGeneratesCode(TokenTypes::tROOT))
+    {}
+
     ~AstNode() 
     {
 #ifdef MISC_DEBUG        
@@ -57,6 +85,7 @@ public:
     std::vector<AstNode*> nChildNodes;
     int nPrecCoeff = 0;      // relevant for operators only
     int nID = 0;
+    bool generatesCode = false;
 
     void addChild(AstNode *child)
     {
@@ -94,10 +123,15 @@ bool greaterPreced(const AstNode &t1, const AstNode &t2)
     return (itr1->second + t1.nPrecCoeff > itr2->second + t2.nPrecCoeff);
 }
 
-bool isconnectornode(TokenTypes tType)
+// bool isconnectornode(TokenTypes tType)
+// {
+//     // also statements
+//     return tType == TokenTypes::tARRAY;
+// }
+bool isblockstart(TokenTypes tType)
 {
-    // also statements
-    return tType == TokenTypes::tARRAY;
+    return tType == TokenTypes::tWHILE 
+        || tType == TokenTypes::tIF;
 }
 
 struct parserState
@@ -110,6 +144,7 @@ private:
     
 public:
     bool fsmFinished = false;
+    bool fsmFinishedCorrectly = true;
     ParseFsmStates fsmCurState = ParseFsmStates::sINIT;
 
     std::stack<AstNode*> pendParentNodes;
@@ -123,6 +158,7 @@ public:
     void reset()
     {
         fsmFinished = false;
+        fsmFinishedCorrectly = true;
         fsmCurState = ParseFsmStates::sINIT;
         curTokenId  = 0;
         layerCoeff = 0;
@@ -131,6 +167,7 @@ public:
     int getLayer() {return layerCoeff;}
     void incLayer() {layerCoeff+=LAYER_INCR;}
     void decLayer() {layerCoeff-=LAYER_DECR;}
+    void resetLayer() {layerCoeff = 0;}
 
     void addStackTopChild(AstNode *child)
     {
@@ -141,7 +178,9 @@ public:
         pendParentNodes.push(newTop);
     }
     bool popStackTop()
-    {
+    {   
+        if (pendParentNodes.empty())
+            return false;
         pendParentNodes.pop();
         return true;
     }
@@ -165,7 +204,7 @@ public:
     }
     bool advance()
     {
-        if (curTokenId < tokens->size())
+        if (curTokenId < tokens->size()-1)
         {
             curTokenId++;
             return true;
@@ -177,6 +216,16 @@ public:
     {
         advance();
         return getCurToken();
+    }
+    bool getTokensFinished() const
+    {
+        return tokensFinished;
+    }
+    bool fsmTerminate(bool finishedCorrectly)
+    {
+        fsmFinished = true;
+        fsmFinishedCorrectly = finishedCorrectly;
+        return fsmFinishedCorrectly;
     }
 
 

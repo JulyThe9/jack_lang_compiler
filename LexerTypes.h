@@ -39,7 +39,7 @@ struct lexerState
 
     bool buffEmpty()
     {
-        return buffer[0] == '\0' && bIdx == 0;
+        return buffer[0] == '\0' || bIdx == 0;
     }
 
     void reset()
@@ -74,8 +74,7 @@ struct TokenData
 enum class TokenTypes : unsigned int
 {
     // alphabetic keywords
-    tUNDEFINED = 0,
-    tCLASS,
+    tCLASS = 0,
     tCONSTRUCTOR,
     tMETHOD,
     tFUNCTION,
@@ -126,7 +125,11 @@ enum class TokenTypes : unsigned int
     tUNKNOWN_SYMBOL,
     
     // AST-SPECIFIC
+    tROOT,
     tARRAY, // array node
+    tWHILE_START,
+    tJUMP,
+    tSTATEMENTS
 };
 
 std::map<std::string, TokenTypes> tokenLookup
@@ -176,10 +179,13 @@ std::map<std::string, TokenTypes> tokenLookup
 
 #ifdef DEBUG    
     ,
-    {"_ROOT_", TokenTypes::tUNDEFINED},
+    {"_ROOT_", TokenTypes::tROOT},
     {"NUMBER", TokenTypes::tNUMBER},
     {"IDENTIFIER", TokenTypes::tIDENTIFIER},
-    {"ARRAY NODE", TokenTypes::tARRAY}
+    {"ARRAY NODE", TokenTypes::tARRAY},
+    {"WHILE START", TokenTypes::tWHILE_START},
+    {"JUMP", TokenTypes::tJUMP},
+    {"STATEMENTS", TokenTypes::tSTATEMENTS}
 #endif
 };
 

@@ -215,7 +215,12 @@ public:
     {
         std::string inBuff(lexState.buffer, lexState.bIdx);
         tokenMapIter it = tokenLookup.find(inBuff);
-        
+
+        // MEMORY LEAK SOMEWHERE: fail_1.jack
+        // lexState.buffer[0] != 0, but
+        // lexState.bIdx == 0
+        // occurs sometimes
+
         // known keyword
         if (it != tokenLookup.end())
         {
