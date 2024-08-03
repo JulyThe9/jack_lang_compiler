@@ -29,19 +29,55 @@ private:
 
     void orderWhileLabels(AstNode *whileNode)
     {
+        assert(whileNode->nChildNodes.size() == 5);
         assert(whileNode->tType == TokenTypes::tWHILE);
 
         auto *whStartNode = whileNode->nChildNodes[0];
         assert(whStartNode->tType == TokenTypes::tWHILE_START);
 
         auto *whJumpNode = whileNode->nChildNodes[2];
-        assert(whJumpNode->tType == TokenTypes::tJUMP);
+        assert(whJumpNode->tType == TokenTypes::tWHILE_JUMP);
+
+        auto *whEndNode = whileNode->nChildNodes[4];
+        assert(whEndNode->tType == TokenTypes::tWHILE_END);
 
         // hooking the labels to each other
         // making sure we jump to condition expr label (whStartNode label id)
-        whileNode->setNValue(whStartNode->nValue);
+        whEndNode->setNValue(whStartNode->nValue);
         // making sure we name the while end label as the destionation of whJumpNode
-        whileNode->setNValueExtra(whJumpNode->nValue);
+        whileNode->setNValue(whJumpNode->nValue);
+    }
+
+    void orderIfLables(AstNode *ifNode)
+    {
+        assert(ifNode->tType == TokenTypes::tIF);
+
+        auto *ifJumpNode = ifNode->nChildNodes[1];
+        assert(ifJumpNode->tType == TokenTypes::tIF_JUMP);
+
+        // to jump outside of if
+        ifNode->setNValue(ifJumpNode->nValue);
+    }
+    void orderElseLabels(AstNode *elseNode)
+    {
+        assert(elseNode->tType == TokenTypes::tELSE);
+
+        // jumping to else end
+        auto *elseJumpNode = elseNode->nChildNodes[0];
+        assert(elseJumpNode->tType == TokenTypes::tELSE_JUMP);
+
+        auto *elseStartNode = elseNode->nChildNodes[1];
+        assert(elseStartNode->tType == TokenTypes::tELSE_START);
+
+        auto *ifJumpNode = getIfBlockJump(elseStartNode);
+        assert(ifJumpNode != NULL);
+
+        // making sure that in if-else block we jump to else start
+        // in case of false condition
+        elseStartNode->setNValue(ifJumpNode->nValue);
+        // making sure the if block jump jumps to 
+        // the lable after the else block
+        elseNode->setNValue(elseJumpNode->nValue);
     }
 
 public:
@@ -191,7 +227,7 @@ public:
 
         parseExpr(pState);
 
-        whileNode->addChild(ALLOC_AST_NODE(TokenTypes::tJUMP));
+        whileNode->addChild(ALLOC_AST_NODE(TokenTypes::tWHILE_JUMP));
         whileNode->nChildNodes.back()->setNValue(getLabelId());
         
         whileNode->addChild(ALLOC_AST_NODE(TokenTypes::tSTATEMENTS));
@@ -199,6 +235,7 @@ public:
         // further stuff goes to STATEMENTS node under current while
         // (until the corresponding })
         pState.addStackTop(whileNode->nChildNodes.back());
+        whileNode->addChild(ALLOC_AST_NODE(TokenTypes::tWHILE_END));
 
         orderWhileLabels(whileNode);
 
@@ -233,7 +270,9 @@ public:
 
         parseExpr(pState);
 
-        ifNode->addChild(ALLOC_AST_NODE(TokenTypes::tJUMP));
+        ifNode->addChild(ALLOC_AST_NODE(TokenTypes::tIF_JUMP));
+        ifNode->nChildNodes.back()->setNValue(getLabelId());
+
         ifNode->addChild(ALLOC_AST_NODE(TokenTypes::tSTATEMENTS));
         pState.addStackTop(ifNode->nChildNodes.back());
         
@@ -246,6 +285,9 @@ public:
             if (!pState.advance())
                 return pState.fsmTerminate(false);
         }
+
+        orderIfLables(ifNode);
+
         // else error
         pState.fsmCurState = ParseFsmStates::sSTATEMENT_DECIDE;
         return true;
@@ -256,7 +298,12 @@ public:
         auto &elseToken = pState.getCurToken();
         auto *elseNode = createStackTopNode(pState, elseToken);
 
-        elseNode->addChild(ALLOC_AST_NODE(TokenTypes::tJUMP));
+        elseNode->addChild(ALLOC_AST_NODE(TokenTypes::tELSE_JUMP));
+        elseNode->nChildNodes.back()->setNValue(getLabelId());
+
+        elseNode->addChild(ALLOC_AST_NODE(TokenTypes::tELSE_START));
+        // nValue will be set in orderElseLabels
+
         elseNode->addChild(ALLOC_AST_NODE(TokenTypes::tSTATEMENTS));
 
         pState.addStackTop(elseNode->nChildNodes.back());
@@ -270,6 +317,9 @@ public:
             if (!pState.advance())
                 return pState.fsmTerminate(false);
         }
+
+        orderElseLabels(elseNode);
+
         // else error
         pState.fsmCurState = ParseFsmStates::sSTATEMENT_DECIDE;
         return true;

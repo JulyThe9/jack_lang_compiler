@@ -33,21 +33,42 @@ public:
         init(srcFileName);
     }
 
-    void writeCode()
+    void writeFile()
     {
-        std::ifstream outFile;
-        outFile.open(outFilePath, std::ios::in);
+        std::ofstream outFile;
+        outFile.open(outFilePath, std::ios::out);
         if (!outFile)
             return; 
 
-        // printing
+        for (const auto &line : outputLines)
+        {
+            outFile << line;
+            outFile << "\r\n";
+        }
+        outFile << "\r\n";
 
         outFile.close();
     }
     
     void genForNode(AstNode *astNode)
     {
+        genMapIter it = generationLookup.find(astNode->tType);
+        if (it == generationLookup.end())
+            return;
         
+        const std::string &codeLine = it->second;
+        size_t wcardPos = codeLine.find('$');
+        if (wcardPos == std::string::npos)
+        {
+            outputLines.push_back(codeLine);
+            return;
+        }
+
+        // replacing $ with node value(data)
+        std::string res = codeLine.substr(0, wcardPos) 
+            + std::to_string(astNode->getNValue()) 
+            + codeLine.substr(wcardPos + 1);
+        outputLines.push_back(res);
     }
 
     void generateCode(AstNode *curRoot)

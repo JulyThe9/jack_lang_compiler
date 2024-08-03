@@ -54,6 +54,9 @@ private:
         static int idPool = 0;
         return idPool++;
     }
+    
+    // moved to private to not mess with pointer
+    AstNode *parentNode = NULL;
 public:
     // any extra fields?
     explicit AstNode(TokenData &token) : TokenData(token), nID(assignId()), 
@@ -85,21 +88,31 @@ public:
     bool generatesCode = false;
 
     int nValue;
-    int nValueExtra;
-
-    //"while_start_lbl_" + 
     void setNValue(int value)
     {
         nValue = value;
     }
-    void setNValueExtra(int valueExtra)
-    {
-        nValueExtra = valueExtra;
-    }
 
+    int getNValue() const
+    {
+        if (tType == TokenTypes::tNUMBER)
+            return tVal.value();
+        
+        return nValue;
+    }
+    
+    void setParent(AstNode *parent)
+    {
+        parentNode = parent;
+    }
+    AstNode *getParent()
+    {
+        return parentNode;
+    }
     void addChild(AstNode *child)
     {
         nChildNodes.push_back(child);
+        nChildNodes.back()->setParent(this);
     }
 
 #ifdef DEBUG
@@ -119,6 +132,24 @@ public:
     }
 #endif
 };
+
+AstNode *getIfBlockJump(AstNode *ifNodeDesc)
+{
+    auto *parent = ifNodeDesc->getParent();
+
+    while (parent && parent->tType != TokenTypes::tIF)
+    {
+        parent = parent->getParent();
+    }
+    if (!parent)
+        return NULL;
+
+    assert(parent->nChildNodes.size() >= 3);
+    auto *ifJumpNode = parent->nChildNodes[1];
+    assert(ifJumpNode->tType == TokenTypes::tIF_JUMP);
+
+    return ifJumpNode;
+}
 
 bool greaterPreced(const AstNode &t1, const AstNode &t2)
 {

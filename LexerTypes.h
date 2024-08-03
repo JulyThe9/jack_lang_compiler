@@ -128,7 +128,16 @@ enum class TokenTypes : unsigned int
     tROOT,
     tARRAY, // array node
     tWHILE_START,
-    tJUMP,
+    tWHILE_END,
+    tELSE_START,
+
+    // only plays a role in code generation
+    // so maybe find a way to carry over
+    // the distinction to the generator
+    tWHILE_JUMP,
+    tIF_JUMP,
+    tELSE_JUMP,
+
     tSTATEMENTS
 };
 
@@ -184,7 +193,11 @@ std::map<std::string, TokenTypes> tokenLookup
     {"IDENTIFIER", TokenTypes::tIDENTIFIER},
     {"ARRAY NODE", TokenTypes::tARRAY},
     {"WHILE START", TokenTypes::tWHILE_START},
-    {"JUMP", TokenTypes::tJUMP},
+    {"WHILE END", TokenTypes::tWHILE_END},
+    {"ELSE START", TokenTypes::tELSE_START},
+    {"WHILE JUMP", TokenTypes::tWHILE_JUMP},
+    {"IF JUMP", TokenTypes::tIF_JUMP},
+    {"ELSE JUMP", TokenTypes::tELSE_JUMP},
     {"STATEMENTS", TokenTypes::tSTATEMENTS}
 #endif
 };
