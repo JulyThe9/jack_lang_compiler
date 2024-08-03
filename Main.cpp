@@ -11,6 +11,7 @@
 #include "Utils.h"
 #include "JackCompilerTypes.h"
 #include "Parser.h"
+#include "Generator.h"
 #include "DEBUG_CONTROL.h"
 #include "/home/synthwave09/dev/nand2tetris/projects/06/UsefulString.h"
 
@@ -436,10 +437,12 @@ public:
 void parserCtrl(tokensVect tokens, identifierVect identifiers)
 {
     Parser parser;
-    parser.buildAST(tokens, identifiers);
+    Generator generator("main.jack");
+    auto *astRoot = parser.buildAST(tokens, identifiers);
 #ifdef DEBUG
     parser.printAST();
 #endif
+    generator.generateCode({astRoot});
 }
 
 bool compilerCtrl(const char *pathIn, const char *pathOut)

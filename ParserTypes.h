@@ -36,11 +36,8 @@ std::map<TokenTypes, int> precedLookup
 };
 
 /*
-
 WHILE -> "lbl{" , "EXPR" , "JUMP" , STATEMENTS
-
 */
-
 struct AstNode : TokenData
 {
 private:
@@ -87,6 +84,19 @@ public:
     int nID = 0;
     bool generatesCode = false;
 
+    int nValue;
+    int nValueExtra;
+
+    //"while_start_lbl_" + 
+    void setNValue(int value)
+    {
+        nValue = value;
+    }
+    void setNValueExtra(int valueExtra)
+    {
+        nValueExtra = valueExtra;
+    }
+
     void addChild(AstNode *child)
     {
         nChildNodes.push_back(child);
@@ -121,6 +131,12 @@ bool greaterPreced(const AstNode &t1, const AstNode &t2)
     assert (itr2 != precedLookup.end());
 
     return (itr1->second + t1.nPrecCoeff > itr2->second + t2.nPrecCoeff);
+}
+
+int getLabelId()
+{
+    static int labelId = 0;
+    return labelId++;
 }
 
 // bool isconnectornode(TokenTypes tType)
