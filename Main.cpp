@@ -442,8 +442,8 @@ void parserCtrl(tokensVect tokens, identifierVect identifiers)
 #ifdef DEBUG
     parser.printAST();
 #endif
-//     generator.generateCode(astRoot);
-//     generator.writeFile();
+    generator.generateCode(astRoot);
+    generator.writeFile();
 }
 
 bool compilerCtrl(const char *pathIn, const char *pathOut)

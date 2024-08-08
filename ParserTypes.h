@@ -339,13 +339,15 @@ public:
     int nID = 0;
     bool generatesCode = false;
 
-    int nValue;
-    void setNValue(int value)
+    void setNodeValue(int value)
     {
-        nValue = value;
+        // making sure no overwriting occur
+        // (programmer's responsibility, hence assert)
+        assert(!aVal.has_value());
+        aVal = value;
     }
 
-    int getNValue() const
+    int getNodeValue() const
     {
         return aVal.value();
     }

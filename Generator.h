@@ -66,7 +66,7 @@ public:
 
         // replacing $ with node value(data)
         std::string res = codeLine.substr(0, wcardPos) 
-            + std::to_string(astNode->getNValue()) 
+            + std::to_string(astNode->getNodeValue()) 
             + codeLine.substr(wcardPos + 1);
         outputLines.push_back(res);
     }
