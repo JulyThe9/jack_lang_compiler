@@ -52,7 +52,7 @@ public:
     
     void genForNode(AstNode *astNode)
     {
-        genMapIter it = generationLookup.find(astNode->tType);
+        genMapIter it = generationLookup.find(astNode->aType);
         if (it == generationLookup.end())
             return;
         

@@ -122,23 +122,7 @@ enum class TokenTypes : unsigned int
     tIDENTIFIER,
     tNUMBER,
 
-    tUNKNOWN_SYMBOL,
-    
-    // AST-SPECIFIC
-    tROOT,
-    tARRAY, // array node
-    tWHILE_START,
-    tWHILE_END,
-    tELSE_START,
-
-    // only plays a role in code generation
-    // so maybe find a way to carry over
-    // the distinction to the generator
-    tWHILE_JUMP,
-    tIF_JUMP,
-    tELSE_JUMP,
-
-    tSTATEMENTS
+    tUNKNOWN_SYMBOL    
 };
 
 std::map<std::string, TokenTypes> tokenLookup
@@ -187,24 +171,32 @@ std::map<std::string, TokenTypes> tokenLookup
     {">", TokenTypes::tGT}
 
 #ifdef DEBUG    
-    ,
-    {"_ROOT_", TokenTypes::tROOT},
-    {"NUMBER", TokenTypes::tNUMBER},
-    {"IDENTIFIER", TokenTypes::tIDENTIFIER},
-    {"ARRAY NODE", TokenTypes::tARRAY},
-    {"WHILE START", TokenTypes::tWHILE_START},
-    {"WHILE END", TokenTypes::tWHILE_END},
-    {"ELSE START", TokenTypes::tELSE_START},
-    {"WHILE JUMP", TokenTypes::tWHILE_JUMP},
-    {"IF JUMP", TokenTypes::tIF_JUMP},
-    {"ELSE JUMP", TokenTypes::tELSE_JUMP},
-    {"STATEMENTS", TokenTypes::tSTATEMENTS}
+    // ,
+    // {"_ROOT_", TokenTypes::tROOT},
+    // {"NUMBER", TokenTypes::tNUMBER},
+    // {"IDENTIFIER", TokenTypes::tIDENTIFIER},
+    // {"ARRAY NODE", TokenTypes::tARRAY},
+    // {"WHILE START", TokenTypes::tWHILE_START},
+    // {"WHILE END", TokenTypes::tWHILE_END},
+    // {"ELSE START", TokenTypes::tELSE_START},
+    // {"WHILE JUMP", TokenTypes::tWHILE_JUMP},
+    // {"IF JUMP", TokenTypes::tIF_JUMP},
+    // {"ELSE JUMP", TokenTypes::tELSE_JUMP},
+    // {"STATEMENTS", TokenTypes::tSTATEMENTS}
 #endif
 };
 
 bool isoperator(TokenTypes tType)
 {
     return tType >= TokenTypes::tPLUS && tType <= TokenTypes::tGT;
+}
+
+// tType is meta-language (C++) type VS.
+// the value of it corresponds to object language (Jack) type
+bool isvartype(TokenTypes tType)
+{
+    // TODO: user-defined types
+    return tType == TokenTypes::tINT;
 }
 
 #ifdef DEBUG

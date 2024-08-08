@@ -438,12 +438,12 @@ void parserCtrl(tokensVect tokens, identifierVect identifiers)
 {
     Parser parser;
     Generator generator("main.jack");
-    auto *astRoot = parser.buildAST(tokens, identifiers);
+     auto *astRoot = parser.buildAST(tokens, identifiers);
 #ifdef DEBUG
     parser.printAST();
 #endif
-    generator.generateCode(astRoot);
-    generator.writeFile();
+//     generator.generateCode(astRoot);
+//     generator.writeFile();
 }
 
 bool compilerCtrl(const char *pathIn, const char *pathOut)
