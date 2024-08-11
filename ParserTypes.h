@@ -2,7 +2,7 @@
 #include <iostream>
 #include <tuple>
 #include "DEBUG_CONTROL.h"
-
+#include "Hierarchy.h"
 
 // should be greater than the number of operators
 #define LAYER_INCR 10
