@@ -132,7 +132,29 @@ public:
             // arrays for later
             else if (token.tType == TokenTypes::tIDENTIFIER)
             {
-                curTermNode = ALLOC_AST_NODE(token);
+                assert(token.tVal.has_value());
+
+                auto identNameID = token.tVal.value();
+                auto [contains, idx] = pState.getScopeFramesTop().containsLocal(identNameID);
+
+                if (contains)                 
+                    curTermNode = ALLOC_AST_NODE(AstNodeTypes::aLOCAL_VAR_READ, idx);
+                else
+                {
+                    std::tie(contains, idx) = pState.getScopeFramesTop().containsArg(identNameID);
+                    if (contains)
+                        curTermNode = ALLOC_AST_NODE(AstNodeTypes::aARG_VAR_READ, idx);
+                    else
+                    {
+                        // TODO: error: unknown var
+                        // adding a dummy term to continue parsing the expression correctly
+#ifdef ERR_DEBUG
+                        assert (identNameID < pState.getIdent()->size());
+                        std::cerr << "ERR: UNKNOWN VARIABLE NAME: " << pState.getIdent()->at(identNameID) << '\n';
+#endif
+                        curTermNode = ALLOC_AST_NODE(AstNodeTypes::aNUMBER, 0);
+                    }
+                }
             }
             else if (isoperator(token.tType))
             {
@@ -390,6 +412,10 @@ public:
     bool varDeclStateBeh(parserState &pState)
     {
         assert(pState.scopeFrames.size() > 0);
+
+        auto &varDeclToken = pState.getCurToken();
+        pState.addStackTopChild(ALLOC_AST_NODE(varDeclToken));
+
         // current token is tVAR
         auto &valTypeToken = pState.advanceAndGet();
         if (pState.getTokensFinished())
@@ -410,10 +436,14 @@ public:
             // id is index (actual vector index) in pState.identifiers;
             // can be used to look-up the actual string
             unsigned int nameID = varToken.tVal.value();
-            if (scopeFramesTop.containsLocal(varToken.tVal.value()).first || 
-                scopeFramesTop.containsArg(varToken.tVal.value()).first)
+            if (std::get<0>(scopeFramesTop.containsLocal(varToken.tVal.value())) || 
+                std::get<0>(scopeFramesTop.containsArg(varToken.tVal.value())))
             {
-                // error, variable redeclaration
+#ifdef ERR_DEBUG
+                assert (nameID < pState.getIdent()->size());
+                std::cerr << "ERR: VARIABLE REDECLARATION: " << pState.getIdent()->at(nameID) << '\n';
+#endif
+                // TODO: error: variable redeclaration
             }
             else
             {
@@ -428,6 +458,8 @@ public:
                 declsFinished = true;
         }
 
+        pState.advance();
+        pState.fsmCurState = ParseFsmStates::sSTATEMENT_DECIDE;
         return true;
     }
 
@@ -437,8 +469,11 @@ public:
         astRoot = ALLOC_AST_NODE();
         pState.addStackTop(astRoot);
 
+        // TODO: temporary until function definition is added
+        pState.addNewScopFrame();
+
         std::stringstream debug_strm;
-        while (!pState.fsmFinished)
+        while (!pState.getFsmFinished())
         {
             debug_strm.str(std::string());
             switch (pState.fsmCurState)
@@ -491,6 +526,7 @@ public:
         return astRoot;
     }
 
+#ifdef DEBUG
     void printAST()
     {
         if (astRoot == NULL)
@@ -500,20 +536,21 @@ public:
     }
     void printAST(AstNode *curRoot)
     {
-#ifndef DEBUG       // RELEASE
-        // post-order
-        for (auto childNode : curRoot->nChildNodes)
-        {
-            printAST(childNode);
-        }
-        curRoot->print();
-#else
         // pre-order
         curRoot->print();
         for (auto childNode : curRoot->nChildNodes)
         {
             printAST(childNode);
         }
-#endif
     }
+    void printASTpost(AstNode *curRoot)
+    {
+        for (auto childNode : curRoot->nChildNodes)
+        {
+            printASTpost(childNode);
+        }
+        curRoot->print();
+    }
+    
+#endif
 };

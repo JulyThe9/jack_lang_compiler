@@ -1,6 +1,8 @@
 #include <stack>
 #include <iostream>
+#include <tuple>
 #include "DEBUG_CONTROL.h"
+
 
 // should be greater than the number of operators
 #define LAYER_INCR 10
@@ -71,6 +73,8 @@ enum class AstNodeTypes : unsigned int
     aELSE_JUMP,
 
     aSTATEMENTS,
+    aLOCAL_VAR_READ,
+    aARG_VAR_READ,
 
     // error-type, should never happen
     aUNKNOWN
@@ -234,7 +238,7 @@ public:
         assert(isvartype(valueType));
         argVars.emplace_back(nameID, valueType);
     }
-    std::pair<bool, unsigned int> containsLocal(unsigned int nameID)
+    std::tuple<bool, unsigned int> containsLocal(unsigned int nameID)
     {
         auto iter = std::find_if(localVars.begin(), localVars.end(), 
             [&nameID](const VariableData &arg) { return arg.nameID == nameID; });
@@ -242,7 +246,7 @@ public:
         return {iter != localVars.end(), 
                 std::distance(localVars.begin(), iter)};
     }
-    std::pair<bool, unsigned int> containsArg(unsigned int nameID)
+    std::tuple<bool, unsigned int> containsArg(unsigned int nameID)
     {
         auto iter = std::find_if(argVars.begin(), argVars.end(), 
             [&nameID](const VariableData &arg) { return arg.nameID == nameID; });
@@ -552,6 +556,10 @@ public:
         fsmFinished = true;
         fsmFinishedCorrectly = finishedCorrectly;
         return fsmFinishedCorrectly;
+    }
+    bool getFsmFinished()
+    {
+        return fsmFinished || tokensFinished;
     }
 
 
