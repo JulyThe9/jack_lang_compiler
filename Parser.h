@@ -11,6 +11,8 @@
 
 // HELPER MACROS
 #define ALLOC_AST_NODE new (aralloc.allocate()) AstNode
+//#define IF_NO_MORE_TOKENS_EXIT if (pState.getTokensFinished()) return pState.fsmTerminate(false);
+
 
 class Parser
 {
@@ -79,12 +81,113 @@ private:
         // the lable after the else block
         elseNode->setNodeValue(elseJumpNode->getNodeValue());
     }
+    bool parseFuncPars(parserState &pState)
+    {
+        auto *token = &(pState.getCurToken());
+        assert(token->tType == TokenTypes::tLPR);
+        assert(pState.getCurParseFunc() != NULL);
+
+        bool success = false;
+        while (true)
+        {
+            // parameter type
+            token = &(pState.advanceAndGet());
+            if (pState.getTokensFinished()) 
+            {
+                return pState.fsmTerminate(false);
+            }
+            assert(isvartype(token->tType));
+            LangDataTypes curParValType = tType_to_ldType(token->tType);
+
+            // parameter name
+            token = &(pState.advanceAndGet());
+            if (pState.getTokensFinished())
+            {
+                return pState.fsmTerminate(false);
+            }
+            assert(token->tType == TokenTypes::tIDENTIFIER);
+            assert(token->tVal.has_value());
+            pState.addCurParseFuncPar(token->tVal.value(), curParValType);
+
+            // comma or function decl closing bracket
+            token = &(pState.advanceAndGet());
+            if (pState.getTokensFinished())
+            {
+                return pState.fsmTerminate(false);
+            }
+            if (token->tType == TokenTypes::tRPR)
+            {
+                success = true;
+                break;
+            }
+            else if (token->tType != TokenTypes::tCOMMA)
+                return pState.fsmTerminate(false);
+        }
+
+        return 
+            success ? true : pState.fsmTerminate(false);
+    }
 
 public:
 
-    void initStateBeh(parserState &pState)
+    bool initStateBeh(parserState &pState)
     {
-        // TEMPORARY:
+        auto *token = &(pState.getCurToken());
+        while (token->tType != TokenTypes::tCLASS)
+        {
+            token = &(pState.advanceAndGet());
+            if (pState.getTokensFinished())
+                return pState.fsmTerminate(false);
+        }
+
+        // token is class at this point
+        // advancing to name
+        token = &(pState.advanceAndGet());
+        if (pState.getTokensFinished())
+            return pState.fsmTerminate(false);
+
+        assert(token->tType == TokenTypes::tIDENTIFIER);
+        assert(token->tVal.has_value());
+        pState.addClass(token->tVal.value());
+
+        // skipping the {
+        pState.advance(2);
+        while (token->tType != TokenTypes::tFUNCTION)
+        {
+            token = &(pState.advanceAndGet());
+            if (pState.getTokensFinished())
+                return pState.fsmTerminate(false);
+        }
+
+        // TODO: temp -> move to FUNC PROCESSING BEH FUNCTION
+
+        // token is function at this point
+        // advancing to return type
+        token = &(pState.advanceAndGet());
+        if (pState.getTokensFinished())
+            return pState.fsmTerminate(false);
+
+        if (!isvartype(token->tType))
+            return pState.fsmTerminate(false);
+        LangDataTypes ldType = tType_to_ldType(token->tType);
+
+        // advancing to name
+        token = &(pState.advanceAndGet());
+        if (pState.getTokensFinished())
+            return pState.fsmTerminate(false);
+
+        assert(token->tType == TokenTypes::tIDENTIFIER);
+        assert(token->tVal.has_value());
+
+        pState.addCurParseClassFunc(token->tVal.value(), ldType);
+        // advancing to (
+        pState.advance();
+        parseFuncPars(pState);
+
+        // skipping the {
+        if (!pState.advance(2))
+            return pState.fsmTerminate(false);
+
         pState.fsmCurState = ParseFsmStates::sSTATEMENT_DECIDE;
     }
 
@@ -105,8 +208,7 @@ public:
             case TokenTypes::tVAR:
                 pState.fsmCurState = ParseFsmStates::sVAR_DECL;
                 break;
-        }
-        
+        }     
     }
 
     void parseExpr(parserState &pState)

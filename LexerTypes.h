@@ -197,8 +197,11 @@ bool isoperator(TokenTypes tType)
 // the value of it corresponds to object language (Jack) type
 bool isvartype(TokenTypes tType)
 {
-    // TODO: user-defined types
-    return tType == TokenTypes::tINT;
+    return tType == TokenTypes::tINT    ||
+        tType == TokenTypes::tBOOLEAN   ||
+        tType == TokenTypes::tCHAR      ||
+        tType == TokenTypes::tVOID      ||
+        tType == TokenTypes::tIDENTIFIER;
 }
 
 #ifdef DEBUG

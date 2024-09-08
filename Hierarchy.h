@@ -8,7 +8,6 @@ enum class ScopeTypes : unsigned int
     // static, global
 };
 
-
 // TODO: TYPE-CHECKING
 struct VariableData
 {
@@ -19,83 +18,114 @@ struct VariableData
     {}
 };
 
-struct ScopeFrame
+struct LocalScopeFrame
 {
-private:
     std::vector<VariableData> localVars;
-    std::vector<VariableData> argVars;
-public:
-    void addVarLocal(unsigned int nameID, LangDataTypes valueType)
-    {
-        assert(isvartype(ldType_to_tType(valueType)));
-        localVars.emplace_back(nameID, valueType);
-    }
-    void addVarArg(unsigned int nameID, LangDataTypes valueType)
-    {
-        assert(isvartype(ldType_to_tType(valueType)));
-        argVars.emplace_back(nameID, valueType);
-    }
-    std::tuple<bool, unsigned int> containsLocal(unsigned int nameID)
+    std::tuple<bool, unsigned int> containsVar(unsigned int nameID)
     {
         auto iter = std::find_if(localVars.begin(), localVars.end(), 
-            [&nameID](const VariableData &arg) { return arg.nameID == nameID; });
+            [&nameID](const VariableData  &arg){ return arg.nameID == nameID; });
 
         return {iter != localVars.end(), 
                 std::distance(localVars.begin(), iter)};
     }
-    std::tuple<bool, unsigned int> containsArg(unsigned int nameID)
+    void addVar(unsigned int nameID, LangDataTypes valueType)
     {
-        auto iter = std::find_if(argVars.begin(), argVars.end(), 
-            [&nameID](const VariableData &arg) { return arg.nameID == nameID; });
-
-        return {iter != argVars.end(),
-                std::distance(argVars.begin(), iter)};
+        assert(isvartype(ldType_to_tType(valueType)));
+        localVars.emplace_back(nameID, valueType);
+    }
+};
+struct LocalScopeManager
+{
+private:
+    std::stack<LocalScopeFrame> locScopeFrames;
+    void addNewFrame()
+    {
+        // pushing empty
+        locScopeFrames.push({});
+    }
+    // ScopeTypes scopeType, 
+    void addScopeFramesTopVar(unsigned int nameID, LangDataTypes valueType)
+    {
+        locScopeFrames.top().addVar(nameID, valueType);
+    }
+    bool popScopeFramesTop()
+    {   
+        if (locScopeFrames.empty())
+            return false;
+        locScopeFrames.pop();
+        return true;
+    }
+    LocalScopeFrame &getScopeFramesTop()
+    {
+        return locScopeFrames.top();
     }
 };
 
-void addScopeFramesTopVar(unsigned int nameID, ScopeTypes scopeType, LangDataTypes valueType)
-{
-    if (scopeType == ScopeTypes::ST_LOCAL)
-        scopeFrames.top().addVarLocal(nameID, valueType);
-    else if (scopeType == ScopeTypes::ST_ARG)
-        scopeFrames.top().addVarArg(nameID, valueType);
-}
-void addNewScopFrame()
-{
-    // pushing empty
-    scopeFrames.push({});
-}
-bool popScopeFramesTop()
-{   
-    if (scopeFrames.empty())
-        return false;
-    scopeFrames.pop();
-    return true;
-}
-ScopeFrame &getScopeFramesTop()
-{
-    return scopeFrames.top();
-}
-
-struct LocalScope
-{
-    std::stack<VariableData> localVars;
-};
-
-struct FunctionData : public LocalScope
+struct FunctionData : public LocalScopeManager
 {
     unsigned int nameID;
     LangDataTypes ldType_ret;
-    std::vector<LangDataTypes> ldType_args;
+    std::vector<VariableData> ldType_pars;
+
+
+public:
+    FunctionData() {}
+    FunctionData(unsigned int nameID, LangDataTypes ldType_ret) 
+        : nameID(nameID), ldType_ret(ldType_ret)
+    {}
+
+    void addPar(unsigned int nameID, LangDataTypes ldType_par)
+    {
+        ldType_pars.emplace_back(nameID, ldType_par);
+    }
 
     // containing class reference?
 };
 
 struct ClassData
 {
+    // keeping the default constructor too
+    ClassData() {}
+    ClassData(unsigned int nameID) : nameID(nameID) {}
     unsigned int nameID;
+private:
     std::vector<FunctionData> funcs;
-    
     std::vector<VariableData> staticVars;
     std::vector<VariableData> fieldVars;
+
+public:
+    // Getter for funcs
+    const std::vector<FunctionData>& getFuncs() const {
+        return funcs;
+    }
+    // Getter for staticVars
+    const std::vector<VariableData>& getStaticVars() const {
+        return staticVars;
+    }
+
+    // Getter for fieldVars
+    const std::vector<VariableData>& getFieldVars() const {
+        return fieldVars;
+    }
+
+    FunctionData *getFunc()
+    {
+        if (funcs.empty())
+            return NULL;
+        return &(funcs.back());
+    }
+
+    bool addFunc(unsigned int nameID, LangDataTypes ldType_ret)
+    {
+        funcs.emplace_back(nameID, ldType_ret);
+    }
+
+    void addFuncPar(unsigned int nameID, LangDataTypes ldType_par)
+    {
+        if (!funcs.empty())
+        {
+            funcs.back().addPar(nameID, ldType_par);
+        }
+    }
 };

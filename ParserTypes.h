@@ -397,8 +397,37 @@ public:
     std::stack<AstNode*> pendParentNodes;
     //std::stack<ScopeFrame> scopeFrames;
 
-    FunctionData curParsedFunc;
-    ClassData curParsedClass;
+    std::vector<ClassData> classes;
+
+    void addClass(unsigned int nameID)
+    {
+        classes.emplace_back(nameID);
+    }
+    ClassData *getCurParseClass()
+    {
+        if (classes.empty())
+            return NULL;
+        return &(classes.back());
+    }
+    void addCurParseClassFunc(unsigned int nameID, LangDataTypes ldType_ret)
+    {
+        getCurParseClass()->addFunc(nameID, ldType_ret);
+    }
+    FunctionData *getCurParseFunc()
+    {
+        auto *curParseClass = getCurParseClass();
+        if (curParseClass == NULL)
+            return NULL;
+        return curParseClass->getFunc();
+    }
+    void addCurParseFuncPar(unsigned int nameID, LangDataTypes ldType_par)
+    {
+        auto *curParseClass = getCurParseClass();
+        if (curParseClass != NULL)
+        {
+            curParseClass->addFuncPar(nameID, ldType_par);
+        }
+    }
 
     parserState( tokensVect &tokens, identifierVect &identifiers) : 
         tokens(&tokens), identifiers(&identifiers)
@@ -453,19 +482,19 @@ public:
     {
         return tokens->at(curTokenId);
     }
-    bool advance()
+    bool advance(unsigned int step = 1)
     {
-        if (curTokenId < tokens->size()-1)
+        if (curTokenId < tokens->size()-step)
         {
-            curTokenId++;
+            curTokenId+=step;
             return true;
         }
         tokensFinished = true;
         return false;
     }
-    TokenData &advanceAndGet()
+    TokenData &advanceAndGet(unsigned int step = 1)
     {
-        advance();
+        advance(step);
         return getCurToken();
     }
     bool getTokensFinished() const
