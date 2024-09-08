@@ -447,7 +447,7 @@ public:
             }
             else
             {
-                pState.addScopeFramesTopVar(nameID, ScopeTypes::ST_LOCAL, valTypeToken.tType);
+                pState.addScopeFramesTopVar(nameID, ScopeTypes::ST_LOCAL, tType_to_ldType(valTypeToken.tType));
             }
 
             auto &token = pState.advanceAndGet();

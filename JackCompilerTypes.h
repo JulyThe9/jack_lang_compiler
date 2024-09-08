@@ -15,6 +15,7 @@ typedef std::map<std::string, TokenTypes>::iterator tokenMapIter;
 
 #include "LexerTypes.h"
 #include "ParserTypes.h"
+#include "CheckerTypes.h"
 #include "GeneratorTypes.h"
 
 #endif

@@ -97,6 +97,7 @@ enum class TokenTypes : unsigned int
     tBOOLEAN,
     tCHAR,
     tVOID,
+    tARRAY,
 
     // symbolic
     tLPR,
@@ -149,6 +150,7 @@ std::map<std::string, TokenTypes> tokenLookup
     {"boolean", TokenTypes::tBOOLEAN},
     {"char", TokenTypes::tCHAR},
     {"void", TokenTypes::tVOID},
+    {"array", TokenTypes::tARRAY},
 
     {"(", TokenTypes::tLPR},
     {")", TokenTypes::tRPR},

@@ -10,12 +10,6 @@
 
 #define MAX_EXPTECTE_AST_NODES 200
 
-// to avoid confusion;
-// we can reuse tINT, etc.
-// but we need to make a distinction between
-// 'types' in different levels (meta-level vs object-level)
-#define ValueTypes TokenTypes
-
 // preliminary, some will go away
 enum class AstNodeTypes : unsigned int
 {
@@ -203,58 +197,6 @@ TokenTypes aType_to_tType(AstNodeTypes aType)
 
     return TokenTypes::tUNKNOWN_SYMBOL;
 }
-
-enum class ScopeTypes : unsigned int
-{
-    ST_LOCAL = 0,
-    ST_ARG
-    // static, global
-};
-
-
-// TODO: TYPE-CHECKING
-struct VariableData
-{
-    unsigned int nameID;
-    ValueTypes valueType;
-    VariableData(unsigned int nameID, ValueTypes valueType) :
-        nameID(nameID), valueType(valueType)
-    {}
-};
-
-struct ScopeFrame
-{
-private:
-    std::vector<VariableData> localVars;
-    std::vector<VariableData> argVars;
-public:
-    void addVarLocal(unsigned int nameID, ValueTypes valueType)
-    {
-        assert(isvartype(valueType));
-        localVars.emplace_back(nameID, valueType);
-    }
-    void addVarArg(unsigned int nameID, ValueTypes valueType)
-    {
-        assert(isvartype(valueType));
-        argVars.emplace_back(nameID, valueType);
-    }
-    std::tuple<bool, unsigned int> containsLocal(unsigned int nameID)
-    {
-        auto iter = std::find_if(localVars.begin(), localVars.end(), 
-            [&nameID](const VariableData &arg) { return arg.nameID == nameID; });
-
-        return {iter != localVars.end(), 
-                std::distance(localVars.begin(), iter)};
-    }
-    std::tuple<bool, unsigned int> containsArg(unsigned int nameID)
-    {
-        auto iter = std::find_if(argVars.begin(), argVars.end(), 
-            [&nameID](const VariableData &arg) { return arg.nameID == nameID; });
-
-        return {iter != argVars.end(),
-                std::distance(argVars.begin(), iter)};
-    }
-};
 
 enum class ParseFsmStates : unsigned int
 {
@@ -453,7 +395,10 @@ public:
     ParseFsmStates fsmCurState = ParseFsmStates::sINIT;
 
     std::stack<AstNode*> pendParentNodes;
-    std::stack<ScopeFrame> scopeFrames;
+    //std::stack<ScopeFrame> scopeFrames;
+
+    FunctionData curParsedFunc;
+    ClassData curParsedClass;
 
     parserState( tokensVect &tokens, identifierVect &identifiers) : 
         tokens(&tokens), identifiers(&identifiers)
@@ -493,30 +438,6 @@ public:
     AstNode &getStackTop()
     {
         return *(pendParentNodes.top());
-    }
-
-    void addScopeFramesTopVar(unsigned int nameID, ScopeTypes scopeType, ValueTypes valueType)
-    {
-        if (scopeType == ScopeTypes::ST_LOCAL)
-            scopeFrames.top().addVarLocal(nameID, valueType);
-        else if (scopeType == ScopeTypes::ST_ARG)
-            scopeFrames.top().addVarArg(nameID, valueType);
-    }
-    void addNewScopFrame()
-    {
-        // pushing empty
-        scopeFrames.push({});
-    }
-    bool popScopeFramesTop()
-    {   
-        if (scopeFrames.empty())
-            return false;
-        scopeFrames.pop();
-        return true;
-    }
-    ScopeFrame &getScopeFramesTop()
-    {
-        return scopeFrames.top();
     }
 
     auto *getTokens()
