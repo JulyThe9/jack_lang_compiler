@@ -1,8 +1,9 @@
 #include <stack>
 #include <iostream>
 #include <tuple>
-#include "DEBUG_CONTROL.h"
+
 #include "Hierarchy.h"
+#include "DEBUG_CONTROL.h"
 
 // should be greater than the number of operators
 #define LAYER_INCR 10
@@ -429,6 +430,23 @@ public:
         }
     }
 
+    void addLocalScopeFramesTopVar(unsigned int nameID, LangDataTypes valueType)
+    {
+        getCurParseFunc()->addLocalScopeFramesTopVar(nameID, valueType);
+    }
+    bool popLocalScopeFramesTop()
+    {   
+        return getCurParseFunc()->popLocalScopeFramesTop(); 
+    }
+    std::tuple<bool, unsigned int> containsArg(int identNameID)
+    {
+        return getCurParseFunc()->containsArg(identNameID);
+    }
+    std::tuple<bool, unsigned int> containsLocal(int identNameID)
+    {
+        return getCurParseFunc()->containsLocal(identNameID);
+    }
+
     parserState( tokensVect &tokens, identifierVect &identifiers) : 
         tokens(&tokens), identifiers(&identifiers)
     {
@@ -464,9 +482,11 @@ public:
         pendParentNodes.pop();
         return true;
     }
-    AstNode &getStackTop()
+    AstNode *getStackTop()
     {
-        return *(pendParentNodes.top());
+        if (pendParentNodes.empty())
+            return NULL;
+        return pendParentNodes.top();
     }
 
     auto *getTokens()

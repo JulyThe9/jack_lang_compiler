@@ -1,3 +1,5 @@
+#ifndef _HIERARCHY_
+#define _HIERARCHY_
 #include <stack>
 #include <vector>
 
@@ -37,7 +39,7 @@ struct LocalScopeFrame
 };
 struct LocalScopeManager
 {
-private:
+protected:
     std::stack<LocalScopeFrame> locScopeFrames;
     void addNewFrame()
     {
@@ -47,6 +49,7 @@ private:
     // ScopeTypes scopeType, 
     void addScopeFramesTopVar(unsigned int nameID, LangDataTypes valueType)
     {
+        assert(!locScopeFrames.empty());
         locScopeFrames.top().addVar(nameID, valueType);
     }
     bool popScopeFramesTop()
@@ -58,7 +61,14 @@ private:
     }
     LocalScopeFrame &getScopeFramesTop()
     {
+        assert(!locScopeFrames.empty());
         return locScopeFrames.top();
+    }
+
+    std::tuple<bool, unsigned int> containsLocalVar(unsigned int nameID)
+    {
+        assert(!locScopeFrames.empty());
+        return locScopeFrames.top().containsVar(nameID);
     }
 };
 
@@ -66,18 +76,45 @@ struct FunctionData : public LocalScopeManager
 {
     unsigned int nameID;
     LangDataTypes ldType_ret;
-    std::vector<VariableData> ldType_pars;
+    std::vector<VariableData> argVars;
 
 
 public:
-    FunctionData() {}
+    FunctionData() 
+    {
+        addNewFrame();
+    }
     FunctionData(unsigned int nameID, LangDataTypes ldType_ret) 
         : nameID(nameID), ldType_ret(ldType_ret)
-    {}
+    {
+        addNewFrame();
+    }
 
     void addPar(unsigned int nameID, LangDataTypes ldType_par)
     {
-        ldType_pars.emplace_back(nameID, ldType_par);
+        argVars.emplace_back(nameID, ldType_par);
+    }
+
+    void addLocalScopeFramesTopVar(unsigned int nameID, LangDataTypes valueType)
+    {
+        addScopeFramesTopVar(nameID, valueType);
+    }
+    bool popLocalScopeFramesTop()
+    {
+        return popScopeFramesTop();
+    }
+
+    std::tuple<bool, unsigned int> containsArg(unsigned int identNameID)
+    {
+        auto iter = std::find_if(argVars.begin(), argVars.end(), 
+            [&identNameID](const VariableData  &arg){ return arg.nameID == identNameID; });
+
+        return {iter != argVars.end(), 
+                std::distance(argVars.begin(), iter)};
+    }
+    std::tuple<bool, unsigned int> containsLocal(unsigned int identNameID)
+    {
+        return containsLocalVar(identNameID);
     }
 
     // containing class reference?
@@ -116,7 +153,7 @@ public:
         return &(funcs.back());
     }
 
-    bool addFunc(unsigned int nameID, LangDataTypes ldType_ret)
+    void addFunc(unsigned int nameID, LangDataTypes ldType_ret)
     {
         funcs.emplace_back(nameID, ldType_ret);
     }
@@ -129,3 +166,5 @@ public:
         }
     }
 };
+
+#endif

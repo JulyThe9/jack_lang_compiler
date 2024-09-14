@@ -14,8 +14,8 @@ typedef std::vector<std::string> identifierVect;
 typedef std::map<std::string, TokenTypes>::iterator tokenMapIter;
 
 #include "LexerTypes.h"
-#include "ParserTypes.h"
 #include "CheckerTypes.h"
+#include "ParserTypes.h"
 #include "GeneratorTypes.h"
 
 #endif

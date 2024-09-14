@@ -17,6 +17,7 @@
 class Parser
 {
 private:
+    int DEBUG_TIMES = 0;
     // IMPORTANT: 200 node limit so far
     ArenaAllocator<AstNode> aralloc{ArenaAllocator<AstNode>(MAX_EXPTECTE_AST_NODES)};
     AstNode* astRoot = NULL;
@@ -151,7 +152,7 @@ public:
         pState.addClass(token->tVal.value());
 
         // skipping the {
-        pState.advance(2);
+        token = &(pState.advanceAndGet(2));
         while (token->tType != TokenTypes::tFUNCTION)
         {
             token = &(pState.advanceAndGet());
@@ -189,6 +190,7 @@ public:
             return pState.fsmTerminate(false);
 
         pState.fsmCurState = ParseFsmStates::sSTATEMENT_DECIDE;
+        return true;
     }
 
     void statementDecideStateBeh(parserState &pState)
@@ -237,13 +239,13 @@ public:
                 assert(token.tVal.has_value());
 
                 auto identNameID = token.tVal.value();
-                auto [contains, idx] = pState.getScopeFramesTop().containsLocal(identNameID);
+                auto [contains, idx] = pState.containsLocal(identNameID);
 
                 if (contains)                 
                     curTermNode = ALLOC_AST_NODE(AstNodeTypes::aLOCAL_VAR_READ, idx);
                 else
                 {
-                    std::tie(contains, idx) = pState.getScopeFramesTop().containsArg(identNameID);
+                    std::tie(contains, idx) = pState.containsArg(identNameID);
                     if (contains)
                         curTermNode = ALLOC_AST_NODE(AstNodeTypes::aARG_VAR_READ, idx);
                     else
@@ -261,14 +263,15 @@ public:
             else if (isoperator(token.tType))
             {
                 // stack top (potentially operator)
-                auto &stackTop = pState.getStackTop();
+                auto *stackTop = pState.getStackTop();
+                assert(stackTop != NULL);
                 // current token (operator) as AST node
                 // commin for the following two cases and needed for greaterPreced,\
                 // so carried placed here
                 auto *operNode = ALLOC_AST_NODE(token, pState.getLayer());
 
                 // start of the expression, parent is while, for or general stms
-                if (!isoperator(aType_to_tType(stackTop.aType)) || greaterPreced(*operNode, stackTop))
+                if (!isoperator(aType_to_tType(stackTop->aType)) || greaterPreced(*operNode, *stackTop))
                 {       
                     operNode->addChild(curTermNode);
                     pState.addStackTop(operNode);      
@@ -276,8 +279,8 @@ public:
                     continue;
                 }
 
-                stackTop.addChild(curTermNode);
-                operNode->addChild(&stackTop);
+                stackTop->addChild(curTermNode);
+                operNode->addChild(stackTop);
                 pState.popStackTop();
                 pState.addStackTop(operNode);
             }
@@ -301,7 +304,8 @@ public:
                 AstNode *stackTop = NULL;
                 do 
                 {
-                    stackTop = &(pState.getStackTop());
+                    stackTop = pState.getStackTop();
+                    assert(stackTop != NULL);
                     stackTop->addChild(curTermNode);
                     curTermNode = stackTop;
                     pState.popStackTop();
@@ -314,7 +318,8 @@ public:
             pState.advance();
         }
 
-        auto *stackTop = &(pState.getStackTop());
+        auto *stackTop = pState.getStackTop();
+        assert(stackTop != NULL);
         stackTop->addChild(curTermNode);    
 
         // either create isexprconnectornode (for array, func call, etc.)
@@ -323,7 +328,8 @@ public:
         {
             auto *lastStackTop = stackTop;
             pState.popStackTop();
-            stackTop = &(pState.getStackTop()); 
+            stackTop = pState.getStackTop();
+            assert(stackTop != NULL);
             stackTop->addChild(lastStackTop);
         }
 
@@ -461,11 +467,15 @@ public:
         // the current block)
         auto popUntilBlockStart = [&] ()
         {
-            auto *stackTop = &(pState.getStackTop());
+            auto *stackTop = pState.getStackTop();
+            if (stackTop == NULL)
+            {
+                return;
+            }
             while (!isblockstart(stackTop->aType))
             {
                 pState.popStackTop();
-                stackTop = &(pState.getStackTop());
+                stackTop = pState.getStackTop();
                 if (!stackTop)
                     break;
             }
@@ -495,7 +505,15 @@ public:
         if (token.tType == TokenTypes::tELSE)
         {
             popUntilBlockStart();
-            auto *ifNode = &(pState.getStackTop());
+            auto *ifNode = pState.getStackTop();
+
+            //assert(ifNode != NULL);
+            // TODO: temp while func nodes not in AST
+            if (ifNode == NULL)
+            {
+                return;
+            }
+
             assert(ifNode->aType == AstNodeTypes::aIF);
 
             // else node will do the label generation now
@@ -513,8 +531,6 @@ public:
 
     bool varDeclStateBeh(parserState &pState)
     {
-        assert(pState.scopeFrames.size() > 0);
-
         auto &varDeclToken = pState.getCurToken();
         pState.addStackTopChild(ALLOC_AST_NODE(varDeclToken));
 
@@ -526,8 +542,6 @@ public:
         if (!isvartype(valTypeToken.tType))
             return pState.fsmTerminate(false);
 
-        auto &scopeFramesTop = pState.getScopeFramesTop();
-
         bool declsFinished = false;
         while (!declsFinished)
         {
@@ -538,8 +552,8 @@ public:
             // id is index (actual vector index) in pState.identifiers;
             // can be used to look-up the actual string
             unsigned int nameID = varToken.tVal.value();
-            if (std::get<0>(scopeFramesTop.containsLocal(varToken.tVal.value())) || 
-                std::get<0>(scopeFramesTop.containsArg(varToken.tVal.value())))
+            if (std::get<0>(pState.containsLocal(varToken.tVal.value())) || 
+                std::get<0>(pState.containsArg(varToken.tVal.value())))
             {
 #ifdef ERR_DEBUG
                 assert (nameID < pState.getIdent()->size());
@@ -549,7 +563,7 @@ public:
             }
             else
             {
-                pState.addScopeFramesTopVar(nameID, ScopeTypes::ST_LOCAL, tType_to_ldType(valTypeToken.tType));
+                pState.addLocalScopeFramesTopVar(nameID, tType_to_ldType(valTypeToken.tType));
             }
 
             auto &token = pState.advanceAndGet();
@@ -571,9 +585,6 @@ public:
         astRoot = ALLOC_AST_NODE();
         pState.addStackTop(astRoot);
 
-        // TODO: temporary until function definition is added
-        pState.addNewScopFrame();
-
         std::stringstream debug_strm;
         while (!pState.getFsmFinished())
         {
@@ -587,7 +598,12 @@ public:
 
             case ParseFsmStates::sSTATEMENT_DECIDE:
                 debug_strm << "sSTATEMENT_DECIDE hits\n";
+                if (DEBUG_TIMES >= 1)
+                {
+                    std::cout << "pppppp\n";
+                }
                 statementDecideStateBeh(pState);
+                DEBUG_TIMES++;
                 break;
 
             case ParseFsmStates::sWHILE:
