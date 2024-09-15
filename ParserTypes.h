@@ -239,7 +239,8 @@ private:
     static bool checkGeneratesCode(AstNodeTypes aType)
     {
         return aType != AstNodeTypes::aSTATEMENTS &&
-            aType != AstNodeTypes::aROOT;
+            aType != AstNodeTypes::aROOT &&
+            aType != AstNodeTypes::aCLASS;
     }
     static int assignId()
     {
@@ -379,7 +380,9 @@ int getLabelId()
 bool isblockstart(AstNodeTypes aType)
 {
     return aType == AstNodeTypes::aWHILE 
-        || aType == AstNodeTypes::aIF;
+        || aType == AstNodeTypes::aIF
+        || aType == AstNodeTypes::aFUNCTION
+        || aType == AstNodeTypes::aCLASS;
 }
 
 struct parserState
@@ -390,8 +393,6 @@ private:
     unsigned int curTokenId = 0;
     bool tokensFinished = false;
     ClassData *curParseClass = NULL;
-    // needed purely for pointer invalidation after reseizing
-    size_t curParseClassIdx = 0;
     
 public:
     bool fsmFinished = false;
@@ -417,16 +418,25 @@ public:
     }
     void addClass(unsigned int nameID, bool isDefined = false)
     {
-        classes.emplace_back(nameID);
-        classes.back().setIsDefined(isDefined);
+        // the next var needed purely due to pointer invalidation after reseizing
+        unsigned int curParseClassIdx = 0;
+        bool restateCurParseClass = false;
+        if (curParseClass != NULL)
+        {
+            restateCurParseClass = true;
+            curParseClassIdx = curParseClass->getID();
+        }
+
+        auto &curClass = classes.emplace_back(nameID);
+        curClass.setIsDefined(isDefined);
+        curClass.setID(classes.size()-1);
         // isDefined == true -> we are in the class definition,
         // so this becomes the current class being parsed
         if (isDefined)
         {
-            curParseClass = &(classes.back());
-            curParseClassIdx = classes.size()-1;
+            curParseClass = &curClass;
         }
-        else
+        else if (restateCurParseClass)
         {
             // resizing on .emplace_back causes pointer invalidation
            curParseClass = &(classes[curParseClassIdx]);
@@ -439,7 +449,6 @@ public:
     {
         assert(classID < classes.size());
         curParseClass = &(classes[classID]);
-        curParseClassIdx = classID;
         // this is the class we are currently defining
         curParseClass->setIsDefined(true);
     }

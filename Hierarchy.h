@@ -72,12 +72,29 @@ protected:
     }
 };
 
-struct FunctionData : public LocalScopeManager
+struct IDable
+{
+typedef unsigned int idx_in_cont;
+protected:
+    IDable() {}
+private:
+    idx_in_cont ID = 0;
+public:
+    void setID(idx_in_cont ID)
+    {
+        this->ID = ID;
+    }
+    idx_in_cont getID()
+    {
+        return ID;
+    }
+};
+
+struct FunctionData : public LocalScopeManager, public IDable
 {
     unsigned int nameID;
     LangDataTypes ldType_ret;
     std::vector<VariableData> argVars;
-
 
 public:
     FunctionData() 
@@ -120,7 +137,8 @@ public:
     // containing class reference?
 };
 
-struct ClassData
+// TODO: public or what kind of inheritance?
+struct ClassData : IDable
 {
     // keeping the default constructor too
     ClassData() : isDefined(false) {}
@@ -164,7 +182,8 @@ public:
 
     void addFunc(unsigned int nameID, LangDataTypes ldType_ret)
     {
-        funcs.emplace_back(nameID, ldType_ret);
+        auto &func = funcs.emplace_back(nameID, ldType_ret);
+        func.setID(funcs.size()-1);
     }
 
     void addFuncPar(unsigned int nameID, LangDataTypes ldType_par)

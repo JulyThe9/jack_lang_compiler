@@ -29,6 +29,13 @@ private:
         pState.addStackTop(astNode);
         return astNode;
     }
+    inline AstNode *createStackTopNode(parserState &pState, AstNodeTypes aType, int aVal)
+    {
+        AstNode *astNode = ALLOC_AST_NODE(aType, aVal);
+        pState.addStackTopChild(astNode);
+        pState.addStackTop(astNode);
+        return astNode;
+    }
 
     void orderWhileLabels(AstNode *whileNode)
     {
@@ -184,6 +191,8 @@ public:
             pState.addClass(classNameID, isDefined);
         }
 
+        auto *classNode = createStackTopNode(pState, AstNodeTypes::aCLASS, pState.getCurParseClass()->getID());
+
         // skipping the {
         token = &(pState.advanceAndGet(2));
         while (token->tType != TokenTypes::tFUNCTION)
@@ -221,6 +230,10 @@ public:
         // skipping the {
         if (!pState.advance(2))
             return pState.fsmTerminate(false);
+
+        auto *funcNode = createStackTopNode(pState, AstNodeTypes::aFUNCTION, pState.getCurParseFunc()->getID());
+        funcNode->addChild(ALLOC_AST_NODE(AstNodeTypes::aSTATEMENTS));
+        pState.addStackTop(funcNode->nChildNodes.back());
 
         pState.fsmCurState = ParseFsmStates::sSTATEMENT_DECIDE;
         return true;
@@ -540,15 +553,7 @@ public:
             popUntilBlockStart();
             auto *ifNode = pState.getStackTop();
 
-            //assert(ifNode != NULL);
-            // TODO: temp while func nodes not in AST
-            if (ifNode == NULL)
-            {
-                return;
-            }
-
             assert(ifNode->aType == AstNodeTypes::aIF);
-
             // else node will do the label generation now
             ifNode->generatesCode = false;
 
