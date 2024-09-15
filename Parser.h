@@ -17,9 +17,8 @@
 class Parser
 {
 private:
-    int DEBUG_TIMES = 0;
-    // IMPORTANT: 200 node limit so far
-    ArenaAllocator<AstNode> aralloc{ArenaAllocator<AstNode>(MAX_EXPTECTE_AST_NODES)};
+    // IMPORTANT: 500 node limit so far
+    ArenaAllocator<AstNode> aralloc{ArenaAllocator<AstNode>(MAX_EXPTECTED_AST_NODES)};
     AstNode* astRoot = NULL;
 
     inline AstNode *createStackTopNode(parserState &pState, TokenData &token)
@@ -104,6 +103,14 @@ private:
             {
                 return pState.fsmTerminate(false);
             }
+
+            // no arguments case
+            if (token->tType == TokenTypes::tRPR)
+            {
+                success = true;
+                break;
+            }
+
             assert(isvartype(token->tType));
             LangDataTypes curParValType = tType_to_ldType(token->tType);
             if (curParValType == LangDataTypes::ldCLASS)
@@ -194,19 +201,56 @@ public:
         auto *classNode = createStackTopNode(pState, AstNodeTypes::aCLASS, pState.getCurParseClass()->getID());
 
         // skipping the {
-        token = &(pState.advanceAndGet(2));
-        while (token->tType != TokenTypes::tFUNCTION)
+        pState.advanceAndGet(2);
+        if (pState.getTokensFinished())
+            return pState.fsmTerminate(false);
+
+        pState.fsmCurState = ParseFsmStates::sCLASS_DECIDE;
+        return true;
+    }
+
+    void statementDecideStateBeh(parserState &pState)
+    {
+        auto &token = pState.getCurToken();
+        switch (token.tType)
         {
-            token = &(pState.advanceAndGet());
-            if (pState.getTokensFinished())
-                return pState.fsmTerminate(false);
+            case TokenTypes::tWHILE:
+                pState.fsmCurState = ParseFsmStates::sWHILE;
+                break;
+            case TokenTypes::tIF:
+                pState.fsmCurState = ParseFsmStates::sIF;
+                break;
+            case TokenTypes::tRCURL:
+                pState.fsmCurState = ParseFsmStates::sBLOCK_CLOSE;
+                break;
+            case TokenTypes::tVAR:
+                pState.fsmCurState = ParseFsmStates::sVAR_DECL;
+                break;
+        }     
+    }
+
+    void classDecideStateBeh(parserState &pState)
+    {
+        auto &token = pState.getCurToken();
+        switch (token.tType)
+        {
+            case TokenTypes::tFIELD:
+                pState.fsmCurState = ParseFsmStates::sFIELD_DECL;
+                break;
+            case TokenTypes::tFUNCTION:
+                pState.fsmCurState = ParseFsmStates::sFUNC_DEF;
+                break;
+            case TokenTypes::tRCURL:
+                pState.fsmCurState = ParseFsmStates::sBLOCK_CLOSE;
+                break;
         }
+    }
 
-        // TODO: temp -> move to FUNC PROCESSING BEH FUNCTION
-
+    bool funcDefStateBeh(parserState &pState)
+    {
         // token is function at this point
         // advancing to return type
-        token = &(pState.advanceAndGet());
+        auto *token = &(pState.advanceAndGet());
         if (pState.getTokensFinished())
             return pState.fsmTerminate(false);
 
@@ -237,26 +281,6 @@ public:
 
         pState.fsmCurState = ParseFsmStates::sSTATEMENT_DECIDE;
         return true;
-    }
-
-    void statementDecideStateBeh(parserState &pState)
-    {
-        auto &token = pState.getCurToken();
-        switch (token.tType)
-        {
-            case TokenTypes::tWHILE:
-                pState.fsmCurState = ParseFsmStates::sWHILE;
-                break;
-            case TokenTypes::tIF:
-                pState.fsmCurState = ParseFsmStates::sIF;
-                break;
-            case TokenTypes::tRCURL:
-                pState.fsmCurState = ParseFsmStates::sBLOCK_CLOSE;
-                break;
-            case TokenTypes::tVAR:
-                pState.fsmCurState = ParseFsmStates::sVAR_DECL;
-                break;
-        }     
     }
 
     void parseExpr(parserState &pState)
@@ -564,7 +588,12 @@ public:
 
         popUntilBlockParent();
         // on to the next statement parsing
-        pState.fsmCurState = ParseFsmStates::sSTATEMENT_DECIDE;
+        if (pState.getStackTop()->aType == AstNodeTypes::aCLASS)
+        {
+            pState.fsmCurState = ParseFsmStates::sCLASS_DECIDE;
+        }
+        else
+            pState.fsmCurState = ParseFsmStates::sSTATEMENT_DECIDE;
     }
 
     bool varDeclStateBeh(parserState &pState)
@@ -637,7 +666,6 @@ public:
             case ParseFsmStates::sSTATEMENT_DECIDE:
                 debug_strm << "sSTATEMENT_DECIDE hits\n";
                 statementDecideStateBeh(pState);
-                DEBUG_TIMES++;
                 break;
 
             case ParseFsmStates::sWHILE:
@@ -664,11 +692,22 @@ public:
                 debug_strm << "sVAR_DECL hits\n";
                 varDeclStateBeh(pState);
                 break;
-            
-            // case ParseFsmStates::sEXPR:
-            //     debug_strm << "sEXPR hits\n";
-            //     exprStateBeh(pState);
-            //     break;
+
+            case ParseFsmStates::sCLASS_DECIDE:
+                debug_strm << "sCLASS_DECIDE hits\n";
+                classDecideStateBeh(pState);
+                break;
+
+            case ParseFsmStates::sFIELD_DECL:
+                debug_strm << "sFIELD_DECL hits\n";
+                //fieldDeclStateBeh(pState);
+                break;
+
+            case ParseFsmStates::sFUNC_DEF:
+                debug_strm << "sFUNC_DEF hits\n";
+                funcDefStateBeh(pState);
+                break;
+
             }
 #ifdef DEBUG
             std::cout << debug_strm.str();

@@ -9,7 +9,7 @@
 #define LAYER_INCR 10
 #define LAYER_DECR LAYER_INCR
 
-#define MAX_EXPTECTE_AST_NODES 200
+#define MAX_EXPTECTED_AST_NODES 500
 
 // preliminary, some will go away
 enum class AstNodeTypes : unsigned int
@@ -208,7 +208,12 @@ enum class ParseFsmStates : unsigned int
     sIF,
     sELSE,
     sEXPR,
-    sVAR_DECL
+    sVAR_DECL,
+
+    // class stuff
+    sCLASS_DECIDE,
+    sFIELD_DECL,
+    sFUNC_DEF
 };
 
 std::map<TokenTypes, int> precedLookup
