@@ -636,10 +636,6 @@ public:
 
             case ParseFsmStates::sSTATEMENT_DECIDE:
                 debug_strm << "sSTATEMENT_DECIDE hits\n";
-                if (DEBUG_TIMES >= 1)
-                {
-                    std::cout << "pppppp\n";
-                }
                 statementDecideStateBeh(pState);
                 DEBUG_TIMES++;
                 break;
