@@ -389,6 +389,9 @@ private:
     identifierVect *identifiers;
     unsigned int curTokenId = 0;
     bool tokensFinished = false;
+    ClassData *curParseClass = NULL;
+    // needed purely for pointer invalidation after reseizing
+    size_t curParseClassIdx = 0;
     
 public:
     bool fsmFinished = false;
@@ -400,15 +403,49 @@ public:
 
     std::vector<ClassData> classes;
 
-    void addClass(unsigned int nameID)
+    const std::vector<ClassData> &getClasses() const
+    {
+        return classes;
+    }
+    std::tuple<bool, unsigned int> containsClass(unsigned int nameID)
+    {
+        auto iter = std::find_if(classes.begin(), classes.end(), 
+            [&nameID](const ClassData  &arg){ return arg.nameID == nameID; });
+
+        return {iter != classes.end(), 
+                std::distance(classes.begin(), iter)};
+    }
+    void addClass(unsigned int nameID, bool isDefined = false)
     {
         classes.emplace_back(nameID);
+        classes.back().setIsDefined(isDefined);
+        // isDefined == true -> we are in the class definition,
+        // so this becomes the current class being parsed
+        if (isDefined)
+        {
+            curParseClass = &(classes.back());
+            curParseClassIdx = classes.size()-1;
+        }
+        else
+        {
+            // resizing on .emplace_back causes pointer invalidation
+           curParseClass = &(classes[curParseClassIdx]);
+        }
+    }
+    // TODO: CHECKER: after parsing the whole prog (all files):
+    // run though classes and see that none have isDefined == false
+    // classID as idx in classes container
+    void setCurParseClass(unsigned int classID)
+    {
+        assert(classID < classes.size());
+        curParseClass = &(classes[classID]);
+        curParseClassIdx = classID;
+        // this is the class we are currently defining
+        curParseClass->setIsDefined(true);
     }
     ClassData *getCurParseClass()
     {
-        if (classes.empty())
-            return NULL;
-        return &(classes.back());
+        return curParseClass;
     }
     void addCurParseClassFunc(unsigned int nameID, LangDataTypes ldType_ret)
     {

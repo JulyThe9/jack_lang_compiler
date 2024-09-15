@@ -99,6 +99,29 @@ private:
             }
             assert(isvartype(token->tType));
             LangDataTypes curParValType = tType_to_ldType(token->tType);
+            if (curParValType == LangDataTypes::ldCLASS)
+            {
+                // checking if such class already exists in classes
+                assert(token->tVal.has_value());
+                unsigned int classID = 0;
+                auto classNameID = token->tVal.value();      
+                auto [classExists, idx] = pState.containsClass(classNameID);
+                if (classExists)
+                {
+                    classID = idx;               
+                }
+                else
+                {
+                    // "extending" LangDataTypes enum, by adding class id in classes to class offset
+                    // in the enum (LangDataTypes::ldCLASS)
+                    classID = pState.getClasses().size();
+                    const bool isDefined = false;
+                    pState.addClass(classNameID, isDefined);
+                }
+
+                unsigned int newTypeID = classID + (unsigned int)LangDataTypes::ldCLASS;
+                curParValType = (LangDataTypes)newTypeID;
+            }
 
             // parameter name
             token = &(pState.advanceAndGet());
@@ -149,7 +172,17 @@ public:
 
         assert(token->tType == TokenTypes::tIDENTIFIER);
         assert(token->tVal.has_value());
-        pState.addClass(token->tVal.value());
+        auto classNameID = token->tVal.value();
+        auto [classExists, idx] = pState.containsClass(classNameID);
+        if (classExists)
+        {
+            pState.setCurParseClass(idx);
+        }
+        else 
+        {
+            const bool isDefined = true;
+            pState.addClass(classNameID, isDefined);
+        }
 
         // skipping the {
         token = &(pState.advanceAndGet(2));

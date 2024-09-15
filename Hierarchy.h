@@ -123,15 +123,24 @@ public:
 struct ClassData
 {
     // keeping the default constructor too
-    ClassData() {}
-    ClassData(unsigned int nameID) : nameID(nameID) {}
+    ClassData() : isDefined(false) {}
+    ClassData(unsigned int nameID) : nameID(nameID), isDefined(false) {}
     unsigned int nameID;
 private:
+    bool isDefined = false;
     std::vector<FunctionData> funcs;
     std::vector<VariableData> staticVars;
     std::vector<VariableData> fieldVars;
 
 public:
+    void setIsDefined(bool isDefined)
+    {
+        this->isDefined = isDefined;
+    }
+    bool getIsDefined()
+    {
+        return isDefined;
+    }
     // Getter for funcs
     const std::vector<FunctionData>& getFuncs() const {
         return funcs;
