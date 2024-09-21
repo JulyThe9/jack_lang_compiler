@@ -43,7 +43,6 @@ public:
         for (const auto &line : outputLines)
         {
             outFile << line;
-            outFile << "\r\n";
         }
         outFile << "\r\n";
 

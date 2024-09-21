@@ -275,9 +275,19 @@ public:
         if (!pState.advance(2))
             return pState.fsmTerminate(false);
 
-        auto *funcNode = createStackTopNode(pState, AstNodeTypes::aFUNCTION, pState.getCurParseFunc()->getID());
+        const auto &curParseFunc = *(pState.getCurParseFunc());
+        auto *funcNode = createStackTopNode(pState, AstNodeTypes::aFUNCTION, curParseFunc.getID());
+
+        funcNode->addChild(ALLOC_AST_NODE(AstNodeTypes::aFUNC_DEF, curParseFunc.nameID));
+        funcNode->addChild(ALLOC_AST_NODE(AstNodeTypes::aFUNC_PARNUM, curParseFunc.getNumOfPars()));
+
         funcNode->addChild(ALLOC_AST_NODE(AstNodeTypes::aSTATEMENTS));
         pState.addStackTop(funcNode->nChildNodes.back());
+
+        if (curParseFunc.ldType_ret != LangDataTypes::ldVOID)
+        {
+            funcNode->addChild(ALLOC_AST_NODE(AstNodeTypes::aFUNC_RET_VAL));
+        }
 
         pState.fsmCurState = ParseFsmStates::sSTATEMENT_DECIDE;
         return true;

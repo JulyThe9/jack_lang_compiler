@@ -84,7 +84,7 @@ public:
     {
         this->ID = ID;
     }
-    idx_in_cont getID()
+    idx_in_cont getID() const
     {
         return ID;
     }
@@ -134,7 +134,10 @@ public:
         return containsLocalVar(identNameID);
     }
 
-    // containing class reference?
+    unsigned int getNumOfPars() const
+    {
+        return argVars.size();
+    }
 };
 
 // TODO: public or what kind of inheritance?

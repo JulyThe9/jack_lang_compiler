@@ -71,6 +71,14 @@ enum class AstNodeTypes : unsigned int
     aLOCAL_VAR_READ,
     aARG_VAR_READ,
 
+    // function-related
+    // for function name
+    aFUNC_DEF,
+    // for parnum in function name parnum
+    aFUNC_PARNUM,
+    // for pushing the return value
+    aFUNC_RET_VAL,
+
     // error-type, should never happen
     aUNKNOWN
 };
@@ -123,6 +131,9 @@ std::map<AstNodeTypes, std::string> aTypes_to_strings
     {AstNodeTypes::aIF_JUMP, "IF_JUMP"},
     {AstNodeTypes::aELSE_JUMP, "ELSE_JUMP"},
     {AstNodeTypes::aSTATEMENTS, "STATEMENTS"},
+    {AstNodeTypes::aFUNC_DEF, "FUNC_DEF"},
+    {AstNodeTypes::aFUNC_PARNUM, "FUNC_PARNUM"},
+    {AstNodeTypes::aFUNC_RET_VAL, "FUNC_RET_VAL"},
     {AstNodeTypes::aUNKNOWN, "UNKNOWN"}
 };
 const std::string &aType_to_string(AstNodeTypes aType)
@@ -234,6 +245,7 @@ std::map<TokenTypes, int> precedLookup
 
 /*
 WHILE -> "lbl{" , "EXPR" , "JUMP" , STATEMENTS
+FUNCTION -> FUNC_DEF, FUNC_PARNUM, STATEMENTS, FUNC_RET_VAL
 */
 struct AstNode
 {
