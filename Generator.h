@@ -13,6 +13,8 @@ class Generator
 private:
     std::vector<std::string> outputLines;
     std::string outFilePath;
+
+    const identifierVect &identifiers;
 public:
     bool init(const sourceFileNameType &srcFileName)
     {
@@ -28,7 +30,8 @@ public:
         return true;
     }
 
-    Generator(const sourceFileNameType &srcFileName)
+    Generator(const sourceFileNameType &srcFileName, const identifierVect &identifiers)
+        : identifiers(identifiers) 
     {
         init(srcFileName);
     }
@@ -63,11 +66,24 @@ public:
             return;
         }
 
-        // replacing $ with node value(data)
-        std::string res = codeLine.substr(0, wcardPos) 
-            + std::to_string(astNode->getNodeValue()) 
-            + codeLine.substr(wcardPos + 1);
-        outputLines.push_back(res);
+        // TODO: this makes the whole gen process less generic,
+        // see if can be unified
+        if (astNode->aType == AstNodeTypes::aFUNC_DEF)
+        {
+            assert (astNode->getNodeValue() < identifiers.size());
+            std::string res = codeLine.substr(0, wcardPos) 
+                + identifiers[astNode->getNodeValue()]
+                + codeLine.substr(wcardPos + 1);
+            outputLines.push_back(res);
+        }
+        else
+        {
+            // replacing $ with node value(data)
+            std::string res = codeLine.substr(0, wcardPos) 
+                + std::to_string(astNode->getNodeValue()) 
+                + codeLine.substr(wcardPos + 1);
+            outputLines.push_back(res);
+        }
     }
 
     void generateCode(AstNode *curRoot)

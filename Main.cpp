@@ -437,7 +437,7 @@ public:
 void parserCtrl(tokensVect tokens, identifierVect identifiers)
 {
     Parser parser;
-    Generator generator("main.jack");
+    Generator generator("main.jack", identifiers);
      auto *astRoot = parser.buildAST(tokens, identifiers);
 #ifdef DEBUG
     parser.printAST();
