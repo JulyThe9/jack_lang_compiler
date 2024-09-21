@@ -71,13 +71,6 @@ enum class AstNodeTypes : unsigned int
     aLOCAL_VAR_READ,
     aARG_VAR_READ,
 
-    // responsible for push right before return
-    // to return a value
-    aFUNC_RET_VAL,
-    // child of aFUNCTION which serves as a root
-    // in function subtree in AST
-    aFUNC_DEF,
-
     // error-type, should never happen
     aUNKNOWN
 };
@@ -415,7 +408,6 @@ public:
     //std::stack<ScopeFrame> scopeFrames;
 
     std::vector<ClassData> classes;
-    std::vector<ContainedFunctionData> funcs;
 
     const std::vector<ClassData> &getClasses() const
     {
@@ -471,23 +463,22 @@ public:
     }
     void addCurParseClassFunc(unsigned int nameID, LangDataTypes ldType_ret)
     {
-        auto &func = funcs.emplace_back(nameID, ldType_ret, getCurParseClass()->getID());
-        func.setID(funcs.size()-1);
-        
-        getCurParseClass()->addFuncId(func.getID());
-    }
-    void addCurParseFuncPar(unsigned int nameID, LangDataTypes ldType_par)
-    {
-        if (!funcs.empty())
-        {
-            funcs.back().addPar(nameID, ldType_par);
-        }
+        getCurParseClass()->addFunc(nameID, ldType_ret);
     }
     FunctionData *getCurParseFunc()
     {
-        if (funcs.empty())
+        auto *curParseClass = getCurParseClass();
+        if (curParseClass == NULL)
             return NULL;
-        return &(funcs.back());
+        return curParseClass->getFunc();
+    }
+    void addCurParseFuncPar(unsigned int nameID, LangDataTypes ldType_par)
+    {
+        auto *curParseClass = getCurParseClass();
+        if (curParseClass != NULL)
+        {
+            curParseClass->addFuncPar(nameID, ldType_par);
+        }
     }
 
     void addLocalScopeFramesTopVar(unsigned int nameID, LangDataTypes valueType)
