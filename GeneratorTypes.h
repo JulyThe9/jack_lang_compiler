@@ -34,7 +34,10 @@ std::map<AstNodeTypes, std::string> generationLookup
     {AstNodeTypes::aOR,       "or"},
     {AstNodeTypes::aNOT,      "not"},
     {AstNodeTypes::aLT,       "lt"},
-    {AstNodeTypes::aGT,       "gt"}
+    {AstNodeTypes::aGT,       "gt"},
+
+    // function related stuff
+    {AstNodeTypes::aFUNCTION,  "return"},
 
     // identifier
 };

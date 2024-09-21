@@ -133,9 +133,24 @@ public:
     {
         return containsLocalVar(identNameID);
     }
-
-    // containing class reference?
 };
+
+struct ClassData;
+struct ContainedFunctionData : public FunctionData
+{
+private:
+    // containing class
+    const idx_in_cont contClassId;
+public:
+    ContainedFunctionData(idx_in_cont contClassId) : FunctionData(), contClassId(contClassId) {}
+    ContainedFunctionData(unsigned int nameID, LangDataTypes ldType_ret, idx_in_cont contClassId)
+        : FunctionData(nameID, ldType_ret), contClassId(contClassId) {}
+
+    idx_in_cont getContClassId() const
+    {
+        return contClassId;
+    }
+};  
 
 // TODO: public or what kind of inheritance?
 struct ClassData : IDable
@@ -146,7 +161,7 @@ struct ClassData : IDable
     unsigned int nameID;
 private:
     bool isDefined = false;
-    std::vector<FunctionData> funcs;
+    std::vector<idx_in_cont> funcIds;
     std::vector<VariableData> staticVars;
     std::vector<VariableData> fieldVars;
 
@@ -159,10 +174,6 @@ public:
     {
         return isDefined;
     }
-    // Getter for funcs
-    const std::vector<FunctionData>& getFuncs() const {
-        return funcs;
-    }
     // Getter for staticVars
     const std::vector<VariableData>& getStaticVars() const {
         return staticVars;
@@ -173,26 +184,11 @@ public:
         return fieldVars;
     }
 
-    FunctionData *getFunc()
+    void addFuncId(idx_in_cont funcId)
     {
-        if (funcs.empty())
-            return NULL;
-        return &(funcs.back());
+        funcIds.push_back(funcId);
     }
 
-    void addFunc(unsigned int nameID, LangDataTypes ldType_ret)
-    {
-        auto &func = funcs.emplace_back(nameID, ldType_ret);
-        func.setID(funcs.size()-1);
-    }
-
-    void addFuncPar(unsigned int nameID, LangDataTypes ldType_par)
-    {
-        if (!funcs.empty())
-        {
-            funcs.back().addPar(nameID, ldType_par);
-        }
-    }
 };
 
 #endif
