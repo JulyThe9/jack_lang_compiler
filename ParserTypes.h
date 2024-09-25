@@ -70,6 +70,8 @@ enum class AstNodeTypes : unsigned int
     aSTATEMENTS,
     aLOCAL_VAR_READ,
     aARG_VAR_READ,
+    aLOCAL_VAR_WRITE,
+    aARG_VAR_WRITE,
 
     // function-related
     // for function name
@@ -131,6 +133,10 @@ std::map<AstNodeTypes, std::string> aTypes_to_strings
     {AstNodeTypes::aIF_JUMP, "IF_JUMP"},
     {AstNodeTypes::aELSE_JUMP, "ELSE_JUMP"},
     {AstNodeTypes::aSTATEMENTS, "STATEMENTS"},
+    {AstNodeTypes::aLOCAL_VAR_READ,"LOCAL_VAR_READ"},
+    {AstNodeTypes::aARG_VAR_READ, "ARG_VAR_READ"},
+    {AstNodeTypes::aLOCAL_VAR_WRITE, "LOCAL_VAR_WRITE"},
+    {AstNodeTypes::aARG_VAR_WRITE, "ARG_VAR_WRITE"},
     {AstNodeTypes::aFUNC_DEF, "FUNC_DEF"},
     {AstNodeTypes::aFUNC_LOCNUM, "FUNC_LOCNUM"},
     {AstNodeTypes::aFUNC_RET_VAL, "FUNC_RET_VAL"},

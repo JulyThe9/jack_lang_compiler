@@ -675,7 +675,48 @@ public:
 
     bool varAssignStateBeh(parserState &pState)
     {
-        return true;
+        auto &varAssignToken = pState.getCurToken();
+        createStackTopNode(pState, varAssignToken);
+        // current token is tLET
+        auto &varToken = pState.advanceAndGet();
+
+        // NOTE: for details see varDeclStateBeh
+        if (pState.getTokensFinished())
+            return pState.fsmTerminate(false);
+
+        assert (varToken.tType == TokenTypes::tIDENTIFIER);
+        unsigned int nameID = varToken.tVal.value();
+
+        // skipping =
+        pState.advance(2);
+        if (pState.getTokensFinished())
+            return pState.fsmTerminate(false);
+
+        parseExpr(pState);
+        // making sure parseExpr didnt mess up stacl top:
+        // we need it to be aLET (parent of expr and LOCAL_WRITE/ARG_WRITE/etc.)
+        assert(pState.getStackTop()->aType == AstNodeTypes::aLET);
+
+        auto [contains_loc, idx_loc] = pState.containsLocal(nameID);
+        if (contains_loc)
+        {   
+            pState.addStackTopChild(ALLOC_AST_NODE(AstNodeTypes::aLOCAL_VAR_WRITE, idx_loc));
+            pState.advance();
+            pState.fsmCurState = ParseFsmStates::sSTATEMENT_DECIDE;
+            return true;
+        }
+
+        auto [contains_arg, idx_arg] = pState.containsArg(nameID);
+        if (contains_arg)
+        {   
+            pState.addStackTopChild(ALLOC_AST_NODE(AstNodeTypes::aARG_VAR_WRITE, idx_arg));
+            pState.advance();
+            pState.fsmCurState = ParseFsmStates::sSTATEMENT_DECIDE;
+            return true;
+        }
+        std::cerr << "ERR: UNKNOWN VARIABLE NAME: " << pState.getIdent()->at(nameID) << '\n';
+        // TODO: error: unknown variable name
+        return pState.fsmTerminate(false);
     }
 
     AstNode *buildAST(tokensVect &tokens, identifierVect &identifiers)

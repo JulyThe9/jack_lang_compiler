@@ -19,15 +19,17 @@ std::map<AstNodeTypes, std::string> generationLookup
     {AstNodeTypes::aELSE_JUMP,      "goto else_end_lbl_$\r\n"},
     {AstNodeTypes::aELSE,           "label else_end_lbl_$\r\n"},
 
-    {AstNodeTypes::aNUMBER,         "push constant $\r\n"},
-    {AstNodeTypes::aLOCAL_VAR_READ, "push local $\r\n"},
-    {AstNodeTypes::aARG_VAR_READ,   "push arg $\r\n"},
-    {AstNodeTypes::aNUMBER,         "push arg $\r\n"},
+    {AstNodeTypes::aNUMBER,          "push constant $\r\n"},
+    {AstNodeTypes::aLOCAL_VAR_READ,  "push local $\r\n"},
+    {AstNodeTypes::aARG_VAR_READ,    "push arg $\r\n"},
+    {AstNodeTypes::aLOCAL_VAR_WRITE, "pop local $\r\n"},
+    {AstNodeTypes::aARG_VAR_WRITE,   "pop arg $\r\n"},
+    {AstNodeTypes::aNUMBER,          "push arg $\r\n"},
 
     // TODO: support =
-    {AstNodeTypes::aPLUS,     "add"},
+    {AstNodeTypes::aPLUS,     "add\r\n"},
     // TODO: implement neg
-    {AstNodeTypes::aMINUS,    "sub"},
+    {AstNodeTypes::aMINUS,    "sub\r\n"},
     {AstNodeTypes::aMULT,     "call Math.multiply 2\r\n"},
     {AstNodeTypes::aDIV,      "call Math.divide 2\r\n"},
     {AstNodeTypes::aAND,      "and\r\n"},
