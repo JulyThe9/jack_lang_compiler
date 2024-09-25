@@ -41,7 +41,7 @@ std::map<AstNodeTypes, std::string> generationLookup
     // aFUNC_PARNUM
     // aFUNC_RETURN,
     {AstNodeTypes::aFUNC_DEF,       "function $ "},
-    {AstNodeTypes::aFUNC_PARNUM,    "$\r\n"},
+    {AstNodeTypes::aFUNC_LOCNUM,    "$\r\n"},
 
     // will need to paramtetrize on local/arg/field + idx
     //{AstNodeTypes::aFUNC_RET_VAL,     "push ...\r\n"},

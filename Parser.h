@@ -226,6 +226,12 @@ public:
             case TokenTypes::tVAR:
                 pState.fsmCurState = ParseFsmStates::sVAR_DECL;
                 break;
+            case TokenTypes::tDO:
+                pState.fsmCurState = ParseFsmStates::sFUNC_CALL;
+                break;
+            case TokenTypes::tLET:
+                pState.fsmCurState = ParseFsmStates::sVAR_ASSIGN;
+                break;
         }     
     }
 
@@ -279,7 +285,7 @@ public:
         auto *funcNode = createStackTopNode(pState, AstNodeTypes::aFUNCTION, curParseFunc.getID());
 
         funcNode->addChild(ALLOC_AST_NODE(AstNodeTypes::aFUNC_DEF, curParseFunc.nameID));
-        funcNode->addChild(ALLOC_AST_NODE(AstNodeTypes::aFUNC_PARNUM, curParseFunc.getNumOfPars()));
+        funcNode->addChild(ALLOC_AST_NODE(AstNodeTypes::aFUNC_LOCNUM));
 
         funcNode->addChild(ALLOC_AST_NODE(AstNodeTypes::aSTATEMENTS));
         pState.addStackTop(funcNode->nChildNodes.back());
@@ -290,6 +296,11 @@ public:
         }
 
         pState.fsmCurState = ParseFsmStates::sSTATEMENT_DECIDE;
+        return true;
+    }
+
+    bool funcCallStateBeh(parserState &pState)
+    {
         return true;
     }
 
@@ -602,6 +613,11 @@ public:
         {
             pState.fsmCurState = ParseFsmStates::sCLASS_DECIDE;
         }
+        else if (pState.getStackTop()->aType == AstNodeTypes::aFUNCTION)
+        {
+            // TODO: why never reached?
+            pState.fsmCurState = ParseFsmStates::sSTATEMENT_DECIDE;
+        }
         else
             pState.fsmCurState = ParseFsmStates::sSTATEMENT_DECIDE;
     }
@@ -610,6 +626,7 @@ public:
     {
         auto &varDeclToken = pState.getCurToken();
         pState.addStackTopChild(ALLOC_AST_NODE(varDeclToken));
+        pState.declaringLocals = true;
 
         // current token is tVAR
         auto &valTypeToken = pState.advanceAndGet();
@@ -656,6 +673,11 @@ public:
         return true;
     }
 
+    bool varAssignStateBeh(parserState &pState)
+    {
+        return true;
+    }
+
     AstNode *buildAST(tokensVect &tokens, identifierVect &identifiers)
     {
         parserState pState(tokens, identifiers);
@@ -666,6 +688,21 @@ public:
         while (!pState.getFsmFinished())
         {
             debug_strm.str(std::string());
+            
+            // means we have just finished declaring local variables
+            // for current parse func
+            if (pState.fsmCurState != ParseFsmStates::sVAR_DECL &&
+                pState.declaringLocals == true)
+            {
+                auto *funcRootNode = getNearestFuncRootNode(pState.getStackTop());
+                assert (funcRootNode != NULL);
+                auto *funcLocNumNode = getFuncLocNumNode(funcRootNode);
+                assert (funcLocNumNode != NULL);
+                funcLocNumNode->setNodeValue(pState.getCurParseFunc()->getNumOfLocals());
+
+                pState.declaringLocals = false;
+            }
+
             switch (pState.fsmCurState)
             {
             case ParseFsmStates::sINIT:
@@ -703,6 +740,11 @@ public:
                 varDeclStateBeh(pState);
                 break;
 
+            case ParseFsmStates::sVAR_ASSIGN:
+                debug_strm << "sVAR_ASSIGN hits\n";
+                varAssignStateBeh(pState);
+                break;
+
             case ParseFsmStates::sCLASS_DECIDE:
                 debug_strm << "sCLASS_DECIDE hits\n";
                 classDecideStateBeh(pState);
@@ -716,6 +758,11 @@ public:
             case ParseFsmStates::sFUNC_DEF:
                 debug_strm << "sFUNC_DEF hits\n";
                 funcDefStateBeh(pState);
+                break;
+
+            case ParseFsmStates::sFUNC_CALL:
+                debug_strm << "sFUNC_CALL hits\n";
+                funcCallStateBeh(pState);
                 break;
 
             }

@@ -75,7 +75,7 @@ enum class AstNodeTypes : unsigned int
     // for function name
     aFUNC_DEF,
     // for parnum in function name parnum
-    aFUNC_PARNUM,
+    aFUNC_LOCNUM,
     // for pushing the return value
     aFUNC_RET_VAL,
 
@@ -132,7 +132,7 @@ std::map<AstNodeTypes, std::string> aTypes_to_strings
     {AstNodeTypes::aELSE_JUMP, "ELSE_JUMP"},
     {AstNodeTypes::aSTATEMENTS, "STATEMENTS"},
     {AstNodeTypes::aFUNC_DEF, "FUNC_DEF"},
-    {AstNodeTypes::aFUNC_PARNUM, "FUNC_PARNUM"},
+    {AstNodeTypes::aFUNC_LOCNUM, "FUNC_LOCNUM"},
     {AstNodeTypes::aFUNC_RET_VAL, "FUNC_RET_VAL"},
     {AstNodeTypes::aUNKNOWN, "UNKNOWN"}
 };
@@ -220,11 +220,13 @@ enum class ParseFsmStates : unsigned int
     sELSE,
     sEXPR,
     sVAR_DECL,
+    sVAR_ASSIGN,
 
     // class stuff
     sCLASS_DECIDE,
     sFIELD_DECL,
-    sFUNC_DEF
+    sFUNC_DEF,
+    sFUNC_CALL
 };
 
 std::map<TokenTypes, int> precedLookup
@@ -244,8 +246,9 @@ std::map<TokenTypes, int> precedLookup
 };
 
 /*
+EXAMPLES:
 WHILE -> "lbl{" , "EXPR" , "JUMP" , STATEMENTS
-FUNCTION -> FUNC_DEF, FUNC_PARNUM, STATEMENTS, FUNC_RET_VAL
+FUNCTION -> FUNC_DEF, FUNC_LOCNUM, STATEMENTS, FUNC_RET_VAL
 */
 struct AstNode
 {
@@ -306,7 +309,7 @@ public:
 
     void setNodeValue(int value)
     {
-        // making sure no overwriting occur
+        // making sure no overwriting occurs
         // (programmer's responsibility, hence assert)
         assert(!aVal.has_value());
         aVal = value;
@@ -367,6 +370,30 @@ AstNode *getIfBlockJump(AstNode *ifNodeDesc)
     return ifJumpNode;
 }
 
+AstNode *getFuncLocNumNode(AstNode *funcNode)
+{
+    for (auto *e : funcNode->nChildNodes)
+    {
+        if (e->aType == AstNodeTypes::aFUNC_LOCNUM)
+            return e;
+    }
+    return NULL;
+}
+
+// going up the tree from childNode
+AstNode *getNearestFuncRootNode(AstNode *childNode)
+{
+    AstNode *queryNode = childNode;
+    while (queryNode->aType != AstNodeTypes::aFUNCTION)
+    {
+        queryNode = queryNode->getParent();
+        if (queryNode == NULL)
+            return NULL;
+    }
+    return queryNode;
+}
+
+
 bool greaterPreced(const AstNode &t1, const AstNode &t2)
 {
     auto tType1 = aType_to_tType(t1.aType);
@@ -417,9 +444,9 @@ public:
     ParseFsmStates fsmCurState = ParseFsmStates::sINIT;
 
     std::stack<AstNode*> pendParentNodes;
-    //std::stack<ScopeFrame> scopeFrames;
-
     std::vector<ClassData> classes;
+
+    bool declaringLocals = false;
 
     const std::vector<ClassData> &getClasses() const
     {

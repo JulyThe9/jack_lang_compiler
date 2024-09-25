@@ -22,7 +22,9 @@ struct VariableData
 
 struct LocalScopeFrame
 {
+private:
     std::vector<VariableData> localVars;
+public:
     std::tuple<bool, unsigned int> containsVar(unsigned int nameID)
     {
         auto iter = std::find_if(localVars.begin(), localVars.end(), 
@@ -35,6 +37,10 @@ struct LocalScopeFrame
     {
         assert(isvartype(ldType_to_tType(valueType)));
         localVars.emplace_back(nameID, valueType);
+    }
+    unsigned int getNumOfLocals() const
+    {
+        return localVars.size();
     }
 };
 struct LocalScopeManager
@@ -69,6 +75,14 @@ protected:
     {
         assert(!locScopeFrames.empty());
         return locScopeFrames.top().containsVar(nameID);
+    }
+
+    unsigned int getNumOfLocals() const
+    {
+        // TODO: this approach assumes no nested local scopes withing a function
+        // (although there is a stack).
+        // Need to change if we want to support them.
+        return locScopeFrames.top().getNumOfLocals();
     }
 };
 
@@ -137,6 +151,11 @@ public:
     unsigned int getNumOfPars() const
     {
         return argVars.size();
+    }
+
+    unsigned int getNumOfLocals() const
+    {
+        return LocalScopeManager::getNumOfLocals();
     }
 };
 
