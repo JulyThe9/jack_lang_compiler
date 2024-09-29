@@ -324,6 +324,10 @@ public:
         assert(!aVal.has_value());
         aVal = value;
     }
+    void overwriteNodeValue(int value)
+    {
+        aVal = value;
+    }
 
     int getNodeValue() const
     {
@@ -519,9 +523,9 @@ public:
         getCurParseClass()->addStaticVar(nameID, valueType);
     }
 
-    void addCurParseClassFunc(unsigned int nameID, LangDataTypes ldType_ret)
+    bool addCurParseClassFunc(unsigned int nameID, LangDataTypes ldType_ret, bool isCtor = false)
     {
-        getCurParseClass()->addFunc(nameID, ldType_ret);
+        return getCurParseClass()->addFunc(nameID, ldType_ret, isCtor);
     }
     
     FunctionData *getCurParseFunc()
@@ -605,7 +609,7 @@ public:
             return NULL;
         return pendParentNodes.top();
     }
-    
+
     LangDataTypes checkCreateUserDefinedDataType(const TokenData &token, bool onlyCheck = false)
     {
         assert(token.tVal.has_value());

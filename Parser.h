@@ -308,7 +308,7 @@ public:
             return pState.fsmTerminate(false);
         }
         const bool onlyCheck = true;
-        LangDataTypes ctorRetType = pState.checkCreateUserDefinedDataType(*token, onlyCheck);
+        const LangDataTypes ctorRetType = pState.checkCreateUserDefinedDataType(*token, onlyCheck);
         // if it's unknown then it's definitely not the class that the ctor belongs to,
         // otherwise it would have been known (class def comes before ctor def)
         if (ctorRetType == LangDataTypes::ldUNKNOWN)
@@ -324,8 +324,45 @@ public:
             return pState.fsmTerminate(false);
         }
 
-        // TODO: continue from here
+        // advancing to name
+        token = &(pState.advanceAndGet());
+        if (pState.getTokensFinished())
+            return pState.fsmTerminate(false);
+
+        assert(token->tType == TokenTypes::tIDENTIFIER);
+        assert(token->tVal.has_value());
+
+        const bool isCtor = true;
+        if (!pState.addCurParseClassFunc(token->tVal.value(), ctorRetType, isCtor))
+        {
+            // TODO: error: ctor already defined
+            return pState.fsmTerminate(false);
+        }
         
+        // advancing to (
+        pState.advance();
+        parseFuncPars(pState);
+
+        // skipping the {
+        if (!pState.advance(2))
+            return pState.fsmTerminate(false);
+
+        const auto &ctorFunc = *(pState.getCurParseFunc());
+        auto *ctorNode = createStackTopNode(pState, AstNodeTypes::aFUNCTION, ctorFunc.getID());
+
+        ctorNode->addChild(ALLOC_AST_NODE(AstNodeTypes::aFUNC_DEF, ctorFunc.nameID));
+        ctorNode->addChild(ALLOC_AST_NODE(AstNodeTypes::aFUNC_LOCNUM, 0));
+
+        // memory commands
+        ctorNode->addChild(ALLOC_AST_NODE(AstNodeTypes::aCTOR_ALLOC,
+            pState.getCurParseFunc()->getNumOfPars()));
+
+        ctorNode->addChild(ALLOC_AST_NODE(AstNodeTypes::aSTATEMENTS));
+        pState.addStackTop(ctorNode->nChildNodes.back());
+
+        ctorNode->addChild(ALLOC_AST_NODE(AstNodeTypes::aFUNC_RET_VAL));
+
+        pState.fsmCurState = ParseFsmStates::sSTATEMENT_DECIDE;
         return true;
     }
 
@@ -366,7 +403,7 @@ public:
         auto *funcNode = createStackTopNode(pState, AstNodeTypes::aFUNCTION, curParseFunc.getID());
 
         funcNode->addChild(ALLOC_AST_NODE(AstNodeTypes::aFUNC_DEF, curParseFunc.nameID));
-        funcNode->addChild(ALLOC_AST_NODE(AstNodeTypes::aFUNC_LOCNUM));
+        funcNode->addChild(ALLOC_AST_NODE(AstNodeTypes::aFUNC_LOCNUM, 0));
 
         funcNode->addChild(ALLOC_AST_NODE(AstNodeTypes::aSTATEMENTS));
         pState.addStackTop(funcNode->nChildNodes.back());
@@ -807,6 +844,7 @@ public:
         pState.addStackTop(astRoot);
 
         std::stringstream debug_strm;
+        bool ignore = false;
         while (!pState.getFsmFinished())
         {
             debug_strm.str(std::string());
@@ -820,7 +858,7 @@ public:
                 assert (funcRootNode != NULL);
                 auto *funcLocNumNode = getFuncLocNumNode(funcRootNode);
                 assert (funcLocNumNode != NULL);
-                funcLocNumNode->setNodeValue(pState.getCurParseFunc()->getNumOfLocals());
+                funcLocNumNode->overwriteNodeValue(pState.getCurParseFunc()->getNumOfLocals());
 
                 pState.declaringLocals = false;
             }
@@ -833,6 +871,7 @@ public:
                 break;
 
             case ParseFsmStates::sSTATEMENT_DECIDE:
+                ignore = true;
                 debug_strm << "sSTATEMENT_DECIDE hits\n";
                 statementDecideStateBeh(pState);
                 break;
@@ -905,7 +944,9 @@ public:
 
             }
 #ifdef DEBUG
-            std::cout << debug_strm.str();
+            if (!ignore)
+                std::cout << debug_strm.str();
+            ignore = false;
 #endif
         }
 

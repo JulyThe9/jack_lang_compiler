@@ -50,7 +50,10 @@ std::map<AstNodeTypes, std::string> generationLookup
 
     // this node is visited the last in a function subtree of AST,
     // so it's simply a return
-    {AstNodeTypes::aFUNCTION,       "return\r\n"}
+    {AstNodeTypes::aFUNCTION,       "return\r\n"},
+
+    // ctor "func" variation
+    {AstNodeTypes::aCTOR_ALLOC,     "push $\r\ncall Memory.alloc 1\r\npop pointer 0\r\n"},
     
     // identifier
 };

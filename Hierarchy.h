@@ -168,6 +168,7 @@ struct ClassData : IDable
     unsigned int nameID;
 private:
     bool isDefined = false;
+    bool ctorAdded = false;
     std::vector<FunctionData> funcs;
     std::vector<VariableData> fieldVars;
     static std::vector<VariableData> staticVars;
@@ -206,10 +207,19 @@ public:
         return &(funcs.back());
     }
 
-    void addFunc(unsigned int nameID, LangDataTypes ldType_ret)
+    bool addFunc(unsigned int nameID, LangDataTypes ldType_ret, bool isCtor = false)
     {
+        if (isCtor)
+        {
+            if (ctorAdded)
+                return false;
+            
+            ctorAdded = true;
+        }
+
         auto &func = funcs.emplace_back(nameID, ldType_ret);
         func.setID(funcs.size()-1);
+        return true;
     }
 
     void addFuncPar(unsigned int nameID, LangDataTypes ldType_par)
