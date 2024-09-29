@@ -13,7 +13,6 @@
 #define ALLOC_AST_NODE new (aralloc.allocate()) AstNode
 //#define IF_NO_MORE_TOKENS_EXIT if (pState.getTokensFinished()) return pState.fsmTerminate(false);
 
-
 class Parser
 {
 private:
@@ -243,6 +242,9 @@ public:
             case TokenTypes::tFIELD:
                 pState.fsmCurState = ParseFsmStates::sFIELD_DECL;
                 break;
+            case TokenTypes::tSTATIC:
+                pState.fsmCurState = ParseFsmStates::sSTATIC_DECL;
+                break;
             case TokenTypes::tFUNCTION:
                 pState.fsmCurState = ParseFsmStates::sFUNC_DEF;
                 break;
@@ -250,6 +252,58 @@ public:
                 pState.fsmCurState = ParseFsmStates::sBLOCK_CLOSE;
                 break;
         }
+    }
+
+    // !isStatic -> isField
+    bool fieldAndStaticStateBeh(parserState &pState, bool isStatic)
+    {
+        auto &declToken = pState.getCurToken();
+        pState.addStackTopChild(ALLOC_AST_NODE(declToken));
+
+        // current token is tVAR
+        auto &valTypeToken = pState.advanceAndGet();
+        if (pState.getTokensFinished())
+            return pState.fsmTerminate(false);
+
+        if (!isvartype(valTypeToken.tType))
+            return pState.fsmTerminate(false);
+
+        bool declsFinished = false;
+        while (!declsFinished)
+        {
+            auto &varToken = pState.advanceAndGet();
+            if (pState.getTokensFinished())
+                return pState.fsmTerminate(false);
+
+            unsigned int nameID = varToken.tVal.value();
+            if (std::get<0>(pState.containsField(varToken.tVal.value())) ||
+                std::get<0>(pState.containsStatic(varToken.tVal.value())))
+            {
+#ifdef ERR_DEBUG
+                assert (nameID < pState.getIdent()->size());
+                std::cerr << "ERR: VARIABLE REDECLARATION: " << pState.getIdent()->at(nameID) << '\n';
+#endif
+                // TODO: error: variable redeclaration
+            }
+            else
+            {
+                if (isStatic)
+                    pState.addCurParseClassStaticVar(nameID, tType_to_ldType(valTypeToken.tType));
+                else
+                    pState.addCurParseClassFieldVar(nameID, tType_to_ldType(valTypeToken.tType));
+            }
+
+            auto &token = pState.advanceAndGet();
+            if (pState.getTokensFinished())
+                return pState.fsmTerminate(false);
+
+            if (token.tType == TokenTypes::tSEMICOLON)
+                declsFinished = true;
+        }
+
+        pState.advance();
+        pState.fsmCurState = ParseFsmStates::sCLASS_DECIDE;
+        return true;
     }
 
     bool funcDefStateBeh(parserState &pState)
@@ -792,8 +846,19 @@ public:
                 break;
 
             case ParseFsmStates::sFIELD_DECL:
+            {
+                const bool isStatic = false;
                 debug_strm << "sFIELD_DECL hits\n";
-                //fieldDeclStateBeh(pState);
+                fieldAndStaticStateBeh(pState, isStatic);
+            }
+                break;
+
+            case ParseFsmStates::sSTATIC_DECL:
+            {
+                const bool isStatic = true;
+                debug_strm << "sSTATIC_DECL hits\n";
+                fieldAndStaticStateBeh(pState, isStatic);
+            }
                 break;
 
             case ParseFsmStates::sFUNC_DEF:

@@ -231,6 +231,7 @@ enum class ParseFsmStates : unsigned int
     // class stuff
     sCLASS_DECIDE,
     sFIELD_DECL,
+    sSTATIC_DECL,
     sFUNC_DEF,
     sFUNC_CALL
 };
@@ -506,10 +507,20 @@ public:
     {
         return curParseClass;
     }
+    void addCurParseClassFieldVar(unsigned int nameID, LangDataTypes valueType)
+    {
+        getCurParseClass()->addFieldVar(nameID, valueType);
+    }
+    void addCurParseClassStaticVar(unsigned int nameID, LangDataTypes valueType)
+    {
+        getCurParseClass()->addStaticVar(nameID, valueType);
+    }
+
     void addCurParseClassFunc(unsigned int nameID, LangDataTypes ldType_ret)
     {
         getCurParseClass()->addFunc(nameID, ldType_ret);
     }
+    
     FunctionData *getCurParseFunc()
     {
         auto *curParseClass = getCurParseClass();
@@ -525,7 +536,6 @@ public:
             curParseClass->addFuncPar(nameID, ldType_par);
         }
     }
-
     void addLocalScopeFramesTopVar(unsigned int nameID, LangDataTypes valueType)
     {
         getCurParseFunc()->addLocalScopeFramesTopVar(nameID, valueType);
@@ -541,6 +551,14 @@ public:
     std::tuple<bool, unsigned int> containsLocal(int identNameID)
     {
         return getCurParseFunc()->containsLocal(identNameID);
+    }
+    std::tuple<bool, unsigned int> containsField(int identNameID)
+    {
+        return getCurParseClass()->containsField(identNameID);
+    }
+    std::tuple<bool, unsigned int> containsStatic(int identNameID)
+    {
+        return getCurParseClass()->containsStatic(identNameID);
     }
 
     parserState( tokensVect &tokens, identifierVect &identifiers) : 

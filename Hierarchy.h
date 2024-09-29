@@ -169,9 +169,8 @@ struct ClassData : IDable
 private:
     bool isDefined = false;
     std::vector<FunctionData> funcs;
-    std::vector<VariableData> staticVars;
     std::vector<VariableData> fieldVars;
-
+    static std::vector<VariableData> staticVars;
 public:
     void setIsDefined(bool isDefined)
     {
@@ -215,6 +214,32 @@ public:
             funcs.back().addPar(nameID, ldType_par);
         }
     }
+
+    void addFieldVar(unsigned int nameID, LangDataTypes valueType)
+    {
+        fieldVars.emplace_back(nameID, valueType);
+    }
+    void addStaticVar(unsigned int nameID, LangDataTypes valueType) const
+    {
+        staticVars.emplace_back(nameID, valueType);
+    }
+    
+    std::tuple<bool, unsigned int> containsField(unsigned int identNameID) const
+    {
+        auto iter = std::find_if(fieldVars.begin(), fieldVars.end(), 
+            [&identNameID](const VariableData  &field){ return field.nameID == identNameID; });
+        return {iter != fieldVars.end(), 
+                std::distance(fieldVars.begin(), iter)};
+    }
+    std::tuple<bool, unsigned int> containsStatic(unsigned int identNameID) const
+    {
+        auto iter = std::find_if(staticVars.begin(), staticVars.end(), 
+            [&identNameID](const VariableData  &field){ return field.nameID == identNameID; });
+        return {iter != staticVars.end(), 
+                std::distance(staticVars.begin(), iter)};
+        
+    }
 };
+std::vector<VariableData> ClassData::staticVars;
 
 #endif
