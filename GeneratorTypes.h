@@ -24,7 +24,7 @@ std::map<AstNodeTypes, std::string> generationLookup
     {AstNodeTypes::aARG_VAR_READ,    "push arg $\r\n"},
     {AstNodeTypes::aLOCAL_VAR_WRITE, "pop local $\r\n"},
     {AstNodeTypes::aARG_VAR_WRITE,   "pop arg $\r\n"},
-    {AstNodeTypes::aNUMBER,          "push arg $\r\n"},
+    {AstNodeTypes::aNUMBER,          "push arg $\r\n"}, // TODO: non-unique!
 
     // TODO: support =
     {AstNodeTypes::aPLUS,     "add\r\n"},

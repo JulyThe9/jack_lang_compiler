@@ -237,7 +237,8 @@ enum class ParseFsmStates : unsigned int
     sSTATIC_DECL,
     sCTOR_DEF,
     sFUNC_DEF,
-    sFUNC_CALL
+    sFUNC_CALL,
+    sRETURN
 };
 
 std::map<TokenTypes, int> precedLookup

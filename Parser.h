@@ -213,6 +213,15 @@ public:
             case TokenTypes::tLET:
                 pState.fsmCurState = ParseFsmStates::sVAR_ASSIGN;
                 break;
+            case TokenTypes::tRETURN:
+                pState.fsmCurState = ParseFsmStates::sRETURN;
+                break;
+            default:
+#ifdef ERR_DEBUG
+                std::cerr << "ERR: UNKNOWN sSTATEMENT_DECIDE outgoing state: " << (unsigned int)token.tType << '\n';
+#endif
+                pState.fsmTerminate(false);
+                break;
         }     
     }
 
@@ -413,6 +422,26 @@ public:
             funcNode->addChild(ALLOC_AST_NODE(AstNodeTypes::aFUNC_RET_VAL));
         }
 
+        pState.fsmCurState = ParseFsmStates::sSTATEMENT_DECIDE;
+        return true;
+    }
+
+    bool returnStateBeh(parserState &pState)
+    {
+        auto *token = &(pState.advanceAndGet());
+        if (pState.getTokensFinished())
+            return pState.fsmTerminate(false);
+
+        if (token->tType == TokenTypes::tSEMICOLON)
+        {
+            pState.addStackTopChild(ALLOC_AST_NODE(AstNodeTypes::aNUMBER, 0));
+            pState.advance();
+            pState.fsmCurState = ParseFsmStates::sSTATEMENT_DECIDE;
+            return true;
+        }
+
+        parseExpr(pState);
+        pState.advance();
         pState.fsmCurState = ParseFsmStates::sSTATEMENT_DECIDE;
         return true;
     }
@@ -935,6 +964,11 @@ public:
             case ParseFsmStates::sFUNC_DEF:
                 debug_strm << "sFUNC_DEF hits\n";
                 funcDefStateBeh(pState);
+                break;
+
+            case ParseFsmStates::sRETURN:
+                debug_strm << "sRETURN hits\n";
+                returnStateBeh(pState);
                 break;
 
             case ParseFsmStates::sFUNC_CALL:
