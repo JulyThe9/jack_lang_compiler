@@ -81,6 +81,8 @@ enum class AstNodeTypes : unsigned int
     // for pushing the return value
     aFUNC_RET_VAL,
 
+    aCTOR_ALLOC,
+
     // error-type, should never happen
     aUNKNOWN
 };
@@ -140,6 +142,7 @@ std::map<AstNodeTypes, std::string> aTypes_to_strings
     {AstNodeTypes::aFUNC_DEF, "FUNC_DEF"},
     {AstNodeTypes::aFUNC_LOCNUM, "FUNC_LOCNUM"},
     {AstNodeTypes::aFUNC_RET_VAL, "FUNC_RET_VAL"},
+    {AstNodeTypes::aCTOR_ALLOC, "CTOR_ALLOC"},
     {AstNodeTypes::aUNKNOWN, "UNKNOWN"}
 };
 const std::string &aType_to_string(AstNodeTypes aType)
@@ -232,6 +235,7 @@ enum class ParseFsmStates : unsigned int
     sCLASS_DECIDE,
     sFIELD_DECL,
     sSTATIC_DECL,
+    sCTOR_DEF,
     sFUNC_DEF,
     sFUNC_CALL
 };
@@ -249,7 +253,6 @@ std::map<TokenTypes, int> precedLookup
     //{TokenTypes::tNOT},
     {TokenTypes::tLT, 2},
     {TokenTypes::tGT, 2}
-
 };
 
 /*
@@ -602,6 +605,33 @@ public:
             return NULL;
         return pendParentNodes.top();
     }
+    
+    LangDataTypes checkCreateUserDefinedDataType(const TokenData &token, bool onlyCheck = false)
+    {
+        assert(token.tVal.has_value());
+        unsigned int classID = 0;
+        auto classNameID = token.tVal.value();      
+        auto [classExists, idx] = containsClass(classNameID);
+        if (classExists)
+        {
+            classID = idx;               
+        }
+        else if (onlyCheck)
+        {
+            return LangDataTypes::ldUNKNOWN;
+        }
+        else
+        {
+            // "extending" LangDataTypes enum, by adding class id in classes to class offset
+            // in the enum (LangDataTypes::ldCLASS)
+            classID = getClasses().size();
+            const bool isDefined = false;
+            addClass(classNameID, isDefined);
+        }
+
+
+        return classID_to_ldType(classID);
+    }    
 
     auto *getTokens()
     {
@@ -645,7 +675,6 @@ public:
     {
         return fsmFinished || tokensFinished;
     }
-
 
 private:
     int layerCoeff = 0;

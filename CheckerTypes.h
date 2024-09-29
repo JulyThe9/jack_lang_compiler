@@ -14,6 +14,11 @@ enum class LangDataTypes : unsigned int
     ldCLASS = LD_CLASS_OFFSET,
 };
 
+LangDataTypes classID_to_ldType(unsigned int classID)
+{
+    return (LangDataTypes)(classID + (unsigned int)LangDataTypes::ldCLASS);
+}
+
 std::map<TokenTypes, LangDataTypes> tTypes_to_ldTypes
 {
     {TokenTypes::tINT, LangDataTypes::ldINT},

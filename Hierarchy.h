@@ -194,6 +194,11 @@ public:
         return fieldVars;
     }
 
+    LangDataTypes asLangDataType()
+    {
+        return (LangDataTypes)getID();
+    }
+
     FunctionData *getFunc()
     {
         if (funcs.empty())

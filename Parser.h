@@ -110,30 +110,12 @@ private:
                 break;
             }
 
-            assert(isvartype(token->tType));
+            if (!isvartype(token->tType))
+                return pState.fsmTerminate(false);
             LangDataTypes curParValType = tType_to_ldType(token->tType);
             if (curParValType == LangDataTypes::ldCLASS)
             {
-                // checking if such class already exists in classes
-                assert(token->tVal.has_value());
-                unsigned int classID = 0;
-                auto classNameID = token->tVal.value();      
-                auto [classExists, idx] = pState.containsClass(classNameID);
-                if (classExists)
-                {
-                    classID = idx;               
-                }
-                else
-                {
-                    // "extending" LangDataTypes enum, by adding class id in classes to class offset
-                    // in the enum (LangDataTypes::ldCLASS)
-                    classID = pState.getClasses().size();
-                    const bool isDefined = false;
-                    pState.addClass(classNameID, isDefined);
-                }
-
-                unsigned int newTypeID = classID + (unsigned int)LangDataTypes::ldCLASS;
-                curParValType = (LangDataTypes)newTypeID;
+                curParValType = pState.checkCreateUserDefinedDataType(*token);
             }
 
             // parameter name
@@ -245,6 +227,9 @@ public:
             case TokenTypes::tSTATIC:
                 pState.fsmCurState = ParseFsmStates::sSTATIC_DECL;
                 break;
+            case TokenTypes::tCONSTRUCTOR:
+                pState.fsmCurState = ParseFsmStates::sCTOR_DEF;
+                break;
             case TokenTypes::tFUNCTION:
                 pState.fsmCurState = ParseFsmStates::sFUNC_DEF;
                 break;
@@ -306,6 +291,44 @@ public:
         return true;
     }
 
+    bool ctorDefStateBeh(parserState &pState)
+    {
+        // token is constructor at this point
+        // advancing to return type
+        auto *token = &(pState.advanceAndGet());
+        if (pState.getTokensFinished())
+            return pState.fsmTerminate(false);
+
+        if (!isvartype(token->tType))
+            return pState.fsmTerminate(false);
+
+        if (tType_to_ldType(token->tType) != LangDataTypes::ldCLASS)
+        {
+            // TODO: error: ctor invalid ret type
+            return pState.fsmTerminate(false);
+        }
+        const bool onlyCheck = true;
+        LangDataTypes ctorRetType = pState.checkCreateUserDefinedDataType(*token, onlyCheck);
+        // if it's unknown then it's definitely not the class that the ctor belongs to,
+        // otherwise it would have been known (class def comes before ctor def)
+        if (ctorRetType == LangDataTypes::ldUNKNOWN)
+        {
+            // TODO: error: ctor invalid ret type
+            return pState.fsmTerminate(false);
+        }
+
+        if (ctorRetType 
+                != classID_to_ldType(pState.getCurParseClass()->getID()))
+        {
+            // TODO: error: ctor invalid ret type
+            return pState.fsmTerminate(false);
+        }
+
+        // TODO: continue from here
+        
+        return true;
+    }
+
     bool funcDefStateBeh(parserState &pState)
     {
         // token is function at this point
@@ -316,7 +339,11 @@ public:
 
         if (!isvartype(token->tType))
             return pState.fsmTerminate(false);
-        LangDataTypes ldType = tType_to_ldType(token->tType);
+        LangDataTypes ldType_ret = tType_to_ldType(token->tType);
+        if (ldType_ret == LangDataTypes::ldCLASS)
+        {
+            ldType_ret = pState.checkCreateUserDefinedDataType(*token);
+        }
 
         // advancing to name
         token = &(pState.advanceAndGet());
@@ -326,7 +353,7 @@ public:
         assert(token->tType == TokenTypes::tIDENTIFIER);
         assert(token->tVal.has_value());
 
-        pState.addCurParseClassFunc(token->tVal.value(), ldType);
+        pState.addCurParseClassFunc(token->tVal.value(), ldType_ret);
         // advancing to (
         pState.advance();
         parseFuncPars(pState);
@@ -859,6 +886,11 @@ public:
                 debug_strm << "sSTATIC_DECL hits\n";
                 fieldAndStaticStateBeh(pState, isStatic);
             }
+                break;
+
+            case ParseFsmStates::sCTOR_DEF:
+                debug_strm << "sCTOR_DEF hits\n";
+                ctorDefStateBeh(pState);
                 break;
 
             case ParseFsmStates::sFUNC_DEF:
