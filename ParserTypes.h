@@ -30,7 +30,6 @@ enum class AstNodeTypes : unsigned int
     aTRUE,
     aFALSE,
     aNULL,
-    aTHIS,
 
     aLPR,
     aRPR,
@@ -73,6 +72,12 @@ enum class AstNodeTypes : unsigned int
     aLOCAL_VAR_WRITE,
     aARG_VAR_WRITE,
 
+    // obj and arr reading/writing
+    aTHIS_READ,
+    aTHIS_WRITE,
+    aTHAT_READ,
+    aTHAT_WRITE,
+
     // function-related
     // for function name
     aFUNC_DEF,
@@ -106,7 +111,6 @@ std::map<AstNodeTypes, std::string> aTypes_to_strings
     {AstNodeTypes::aTRUE, "TRUE"},
     {AstNodeTypes::aFALSE, "FALSE"},
     {AstNodeTypes::aNULL, "NULL"},
-    {AstNodeTypes::aTHIS, "THIS"},
     {AstNodeTypes::aLPR, "LPR"},
     {AstNodeTypes::aRPR, "RPR"},
     {AstNodeTypes::aLBR, "LBR"},
@@ -139,6 +143,12 @@ std::map<AstNodeTypes, std::string> aTypes_to_strings
     {AstNodeTypes::aARG_VAR_READ, "ARG_VAR_READ"},
     {AstNodeTypes::aLOCAL_VAR_WRITE, "LOCAL_VAR_WRITE"},
     {AstNodeTypes::aARG_VAR_WRITE, "ARG_VAR_WRITE"},
+
+    {AstNodeTypes::aTHIS_READ, "THIS_READ"},
+    {AstNodeTypes::aTHIS_WRITE, "THIS_WRITE"},
+    {AstNodeTypes::aTHAT_READ, "THAT_READ"},
+    {AstNodeTypes::aTHAT_WRITE, "THAT_WRITE"},
+
     {AstNodeTypes::aFUNC_DEF, "FUNC_DEF"},
     {AstNodeTypes::aFUNC_LOCNUM, "FUNC_LOCNUM"},
     {AstNodeTypes::aFUNC_RET_VAL, "FUNC_RET_VAL"},
@@ -176,7 +186,6 @@ std::map<TokenTypes, AstNodeTypes> tTypes_to_aTypes
     {TokenTypes::tTRUE, AstNodeTypes::aTRUE},
     {TokenTypes::tFALSE, AstNodeTypes::aFALSE},
     {TokenTypes::tNULL, AstNodeTypes::aNULL},
-    {TokenTypes::tTHIS, AstNodeTypes::aTHIS},
 
     {TokenTypes::tLPR, AstNodeTypes::aLPR},
     {TokenTypes::tRPR, AstNodeTypes::aRPR},

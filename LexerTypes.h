@@ -91,6 +91,7 @@ enum class TokenTypes : unsigned int
     tFALSE,
     tNULL,
     tTHIS,
+    tTHAT,
 
     // alphabetic data types
     tINT,
@@ -145,6 +146,7 @@ std::map<std::string, TokenTypes> tokenLookup
     {"false", TokenTypes::tFALSE},
     {"null", TokenTypes::tNULL},
     {"this", TokenTypes::tTHIS},
+    {"that", TokenTypes::tTHAT},
 
     {"int", TokenTypes::tINT},
     {"boolean", TokenTypes::tBOOLEAN},
@@ -202,6 +204,15 @@ bool isvartype(TokenTypes tType)
         tType == TokenTypes::tCHAR      ||
         tType == TokenTypes::tVOID      ||
         tType == TokenTypes::tIDENTIFIER;
+}
+
+bool isexprkeyword(TokenTypes tType)
+{
+    return tType == TokenTypes::tTHIS ||
+        tType == TokenTypes::tTHAT ||
+        tType == TokenTypes::tTRUE ||
+        tType == TokenTypes::tFALSE ||
+        tType == TokenTypes::tNULL;
 }
 
 #ifdef DEBUG

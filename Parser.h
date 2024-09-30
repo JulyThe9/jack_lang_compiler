@@ -498,6 +498,17 @@ public:
                     }
                 }
             }
+            else if (isexprkeyword(token.tType))
+            {
+                if (token.tType == TokenTypes::tTHIS)
+                    curTermNode = ALLOC_AST_NODE(AstNodeTypes::aTHIS_READ);
+                else if (token.tType == TokenTypes::tTHAT)
+                    curTermNode = ALLOC_AST_NODE(AstNodeTypes::aTHAT_READ);
+                else if (token.tType == TokenTypes::tTRUE)
+                    curTermNode = ALLOC_AST_NODE(AstNodeTypes::aNUMBER, 1);
+                else if (token.tType == TokenTypes::tFALSE || token.tType == TokenTypes::tNULL)
+                    curTermNode = ALLOC_AST_NODE(AstNodeTypes::aNUMBER, 0);
+            }
             else if (isoperator(token.tType))
             {
                 // stack top (potentially operator)
