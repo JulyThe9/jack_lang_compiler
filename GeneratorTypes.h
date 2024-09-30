@@ -3,6 +3,8 @@
 typedef std::string sourceFileNameType;
 typedef std::map<AstNodeTypes, std::string>::iterator genMapIter;
 
+// TODO: validation: if node generates code but its type not found in
+// generationLookup, then we made a mistake somewhere
 std::map<AstNodeTypes, std::string> generationLookup
 {
     {AstNodeTypes::aWHILE_START,    "label while_start_lbl_$\r\n"},
@@ -56,10 +58,14 @@ std::map<AstNodeTypes, std::string> generationLookup
     // so it's simply a return
     {AstNodeTypes::aFUNCTION,       "return\r\n"},
 
+    // class-related
     // ctor "func" variation
     {AstNodeTypes::aCTOR_ALLOC,     "push $\r\ncall Memory.alloc 1\r\npop pointer 0\r\n"},
     
-    // identifier
+    {AstNodeTypes::aFIELD_VAR_READ,   "push this $\r\n"},
+    {AstNodeTypes::aFIELD_VAR_WRITE,  "pop this $\r\n"},
+    {AstNodeTypes::aSTATIC_VAR_READ,  "push static $\r\n"},
+    {AstNodeTypes::aSTATIC_VAR_WRITE, "pop static $\r\n"}
 };
 
 std::string outFileExt = "vm";

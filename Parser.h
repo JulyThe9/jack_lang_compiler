@@ -11,7 +11,6 @@
 
 // HELPER MACROS
 #define ALLOC_AST_NODE new (aralloc.allocate()) AstNode
-//#define IF_NO_MORE_TOKENS_EXIT if (pState.getTokensFinished()) return pState.fsmTerminate(false);
 
 class Parser
 {
@@ -476,26 +475,14 @@ public:
             {
                 assert(token.tVal.has_value());
 
-                auto identNameID = token.tVal.value();
-                auto [contains, idx] = pState.containsLocal(identNameID);
-
-                if (contains)                 
-                    curTermNode = ALLOC_AST_NODE(AstNodeTypes::aLOCAL_VAR_READ, idx);
+                auto [varScope, idx] = pState.findVariable(token.tVal.value());
+                if (varScope != VarScopes::scUNKNOWN)
+                {
+                    curTermNode = ALLOC_AST_NODE(varScopeToAccessType(varScope), idx);
+                }
                 else
                 {
-                    std::tie(contains, idx) = pState.containsArg(identNameID);
-                    if (contains)
-                        curTermNode = ALLOC_AST_NODE(AstNodeTypes::aARG_VAR_READ, idx);
-                    else
-                    {
-                        // TODO: error: unknown var
-                        // adding a dummy term to continue parsing the expression correctly
-#ifdef ERR_DEBUG
-                        assert (identNameID < pState.getIdent()->size());
-                        std::cerr << "ERR: UNKNOWN VARIABLE NAME: " << pState.getIdent()->at(identNameID) << '\n';
-#endif
-                        curTermNode = ALLOC_AST_NODE(AstNodeTypes::aNUMBER, 0);
-                    }
+                    // TODO: could be function call or class object name
                 }
             }
             else if (isexprkeyword(token.tType))
@@ -843,7 +830,7 @@ public:
             return pState.fsmTerminate(false);
 
         assert (varToken.tType == TokenTypes::tIDENTIFIER);
-        unsigned int nameID = varToken.tVal.value();
+        const unsigned int nameID = varToken.tVal.value();
 
         // skipping =
         pState.advance(2);
@@ -855,23 +842,19 @@ public:
         // we need it to be aLET (parent of expr and LOCAL_WRITE/ARG_WRITE/etc.)
         assert(pState.getStackTop()->aType == AstNodeTypes::aLET);
 
-        auto [contains_loc, idx_loc] = pState.containsLocal(nameID);
-        if (contains_loc)
+        auto [varScope, idx] = pState.findVariable(nameID);
+        if (varScope != VarScopes::scUNKNOWN)
         {   
-            pState.addStackTopChild(ALLOC_AST_NODE(AstNodeTypes::aLOCAL_VAR_WRITE, idx_loc));
+            const bool isWriting = true;
+            pState.addStackTopChild(ALLOC_AST_NODE(varScopeToAccessType(varScope, isWriting), idx));
+            
             pState.advance();
             pState.fsmCurState = ParseFsmStates::sSTATEMENT_DECIDE;
             return true;
         }
 
-        auto [contains_arg, idx_arg] = pState.containsArg(nameID);
-        if (contains_arg)
-        {   
-            pState.addStackTopChild(ALLOC_AST_NODE(AstNodeTypes::aARG_VAR_WRITE, idx_arg));
-            pState.advance();
-            pState.fsmCurState = ParseFsmStates::sSTATEMENT_DECIDE;
-            return true;
-        }
+        // NOTE: cannot be a class obj name, because class members
+        // are only set through setters
         std::cerr << "ERR: UNKNOWN VARIABLE NAME: " << pState.getIdent()->at(nameID) << '\n';
         // TODO: error: unknown variable name
         return pState.fsmTerminate(false);

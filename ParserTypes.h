@@ -88,6 +88,12 @@ enum class AstNodeTypes : unsigned int
 
     aCTOR_ALLOC,
 
+    // class-related
+    aFIELD_VAR_READ,
+    aFIELD_VAR_WRITE,
+    aSTATIC_VAR_READ,
+    aSTATIC_VAR_WRITE,
+
     // error-type, should never happen
     aUNKNOWN
 };
@@ -143,16 +149,18 @@ std::map<AstNodeTypes, std::string> aTypes_to_strings
     {AstNodeTypes::aARG_VAR_READ, "ARG_VAR_READ"},
     {AstNodeTypes::aLOCAL_VAR_WRITE, "LOCAL_VAR_WRITE"},
     {AstNodeTypes::aARG_VAR_WRITE, "ARG_VAR_WRITE"},
-
     {AstNodeTypes::aTHIS_READ, "THIS_READ"},
     {AstNodeTypes::aTHIS_WRITE, "THIS_WRITE"},
     {AstNodeTypes::aTHAT_READ, "THAT_READ"},
     {AstNodeTypes::aTHAT_WRITE, "THAT_WRITE"},
-
     {AstNodeTypes::aFUNC_DEF, "FUNC_DEF"},
     {AstNodeTypes::aFUNC_LOCNUM, "FUNC_LOCNUM"},
     {AstNodeTypes::aFUNC_RET_VAL, "FUNC_RET_VAL"},
     {AstNodeTypes::aCTOR_ALLOC, "CTOR_ALLOC"},
+    {AstNodeTypes::aFIELD_VAR_READ,  "FIELD_VAR_READ"},
+    {AstNodeTypes::aFIELD_VAR_WRITE, "FIELD_VAR_WRITE"},
+    {AstNodeTypes::aSTATIC_VAR_READ,  "STATIC_VAR_READ"},
+    {AstNodeTypes::aSTATIC_VAR_WRITE, "STATIC_VAR_WRITE"},
     {AstNodeTypes::aUNKNOWN, "UNKNOWN"}
 };
 const std::string &aType_to_string(AstNodeTypes aType)
@@ -264,6 +272,29 @@ std::map<TokenTypes, int> precedLookup
     {TokenTypes::tLT, 2},
     {TokenTypes::tGT, 2}
 };
+
+enum class VarScopes : unsigned int
+{
+    scLOCAL = 0,
+    scARG,
+    scFIELD,
+    scSTATIC,
+    scUNKNOWN
+};
+
+AstNodeTypes varScopeToAccessType(VarScopes varScope, bool isWriting = false)
+{
+    if (varScope == VarScopes::scLOCAL)
+        return isWriting ? AstNodeTypes::aLOCAL_VAR_WRITE : AstNodeTypes::aLOCAL_VAR_READ;
+    if (varScope == VarScopes::scARG)
+        return isWriting ? AstNodeTypes::aARG_VAR_WRITE : AstNodeTypes::aARG_VAR_READ;
+    if (varScope == VarScopes::scFIELD)
+        return isWriting ? AstNodeTypes::aFIELD_VAR_WRITE : AstNodeTypes::aFIELD_VAR_READ;
+    if (varScope == VarScopes::scSTATIC)
+        return isWriting ? AstNodeTypes::aSTATIC_VAR_WRITE : AstNodeTypes::aSTATIC_VAR_READ;
+
+    return AstNodeTypes::aUNKNOWN;
+}
 
 /*
 EXAMPLES:
@@ -646,6 +677,37 @@ public:
 
         return classID_to_ldType(classID);
     }    
+
+    std::tuple<VarScopes, unsigned int> findVariable(int identNameID)
+    {   
+        // LOCAL
+        auto [contains, idx] = containsLocal(identNameID);
+        if (contains)                 
+            return {VarScopes::scLOCAL, idx};
+
+        // ARG
+        std::tie(contains, idx) = containsArg(identNameID);
+        if (contains)
+            return {VarScopes::scARG, idx};
+
+        // FIELD
+        std::tie(contains, idx) = containsField(identNameID);
+        if (contains)
+            return {VarScopes::scFIELD, idx};
+
+        // STATIC
+        std::tie(contains, idx) = containsStatic(identNameID);
+        if (contains)
+            return {VarScopes::scSTATIC, idx};
+
+        // might be a function or object name
+        // adding a dummy term to continue parsing the expression correctly
+        // #ifdef ERR_DEBUG
+        //         assert (identNameID < getIdent()->size());
+        //         std::cerr << "ERR: UNKNOWN VARIABLE NAME: " << getIdent()->at(identNameID) << '\n';
+        // #endif
+        return {VarScopes::scUNKNOWN, 0};
+    }
 
     auto *getTokens()
     {
