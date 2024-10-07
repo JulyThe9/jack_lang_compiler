@@ -4,9 +4,10 @@
 
 #define DEBUG 1
 #define ERR_DEBUG 1
-#define LEXER_DEBUG_m 1
+#define LEXER_DEBUG 1
 #define MISC_DEBUG_m 1
 
+#define LEXER_ONLY 1
 
 #endif
 

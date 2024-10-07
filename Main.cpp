@@ -235,20 +235,22 @@ public:
         if (!*pEnd)
         {
             lexState.tokens.emplace_back(TokenTypes::tNUMBER, num);
-            return;
-        }
-
-        const auto identPosNum = vectContains(lexState.identifiers, inBuff);
-        // known identifier
-        if (identPosNum >= 0)
-        {
-            lexState.tokens.emplace_back(TokenTypes::tIDENTIFIER, identPosNum);
         }
         else
         {
-            lexState.identifiers.push_back(inBuff);
-            lexState.tokens.emplace_back(TokenTypes::tIDENTIFIER, lexState.identifiers.size()-1);
+            const auto identPosNum = vectContains(lexState.identifiers, inBuff);
+            // known identifier
+            if (identPosNum >= 0)
+            {
+                lexState.tokens.emplace_back(TokenTypes::tIDENTIFIER, identPosNum);
+            }
+            else
+            {
+                lexState.identifiers.push_back(inBuff);
+                lexState.tokens.emplace_back(TokenTypes::tIDENTIFIER, lexState.identifiers.size()-1);
+            }
         }
+        lexState.lastOperTermIsOper = false;
     }
 
     void symbolStateBeh(UsefulString &ustr, lexerState &lexState)
@@ -283,10 +285,27 @@ public:
 
         std::string s(1, c);
         tokenMapIter it = tokenLookup.find(s);
-        //tUNKNOWN_SYMBOL
         if (it != tokenLookup.end())
         {
-            lexState.tokens.push_back(it->second);
+            if (it->first[0] == ')')
+                lexState.lastOperTermIsOper = false;
+
+            if (it->second == TokenTypes::tMINUS)
+            {
+                if (lexState.lastOperTermIsOper)
+                    lexState.tokens.push_back(TokenTypes::tNEG_MINUS);
+                else
+                {
+                    lexState.tokens.push_back(TokenTypes::tMINUS);
+                    lexState.lastOperTermIsOper = true;
+                }
+            }
+            else
+            {
+                lexState.tokens.push_back(it->second);
+                if (isoperator(it->second))
+                    lexState.lastOperTermIsOper = true;
+            }   
         }
         else
         {
@@ -426,7 +445,7 @@ public:
             handleBuffer(lexState);
         }
 #ifdef LEXER_DEBUG
-        std::cout << "Finished parsing\n";
+        std::cout << "Finished tokenizing line: " << line << '\n';
         std::cout << "Got this many tokens now: " << lexState.tokens.size() << '\n';
 #endif
         return true;
@@ -515,7 +534,9 @@ bool compilerCtrl(const char *pathIn, const char *pathOut)
         jackFile.close();
     }
 
+#ifndef LEXER_ONLY
     parserCtrl(lexState.tokens, lexState.identifiers);
+#endif
 
     return true;
 }

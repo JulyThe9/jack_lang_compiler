@@ -23,6 +23,9 @@ struct lexerState
 
     tokensVect tokens;
     identifierVect identifiers;
+    // whether the last oper or term token
+    // is operator, false -> term
+    bool lastOperTermIsOper = false;
 
     void flush()
     {
@@ -57,6 +60,7 @@ struct lexerState
                commentOpen = false;
         }
         fsmCurState = LexFsmStates::sINIT;
+        lastOperTermIsOper = false;
     }
 };
 
@@ -121,6 +125,8 @@ enum class TokenTypes : unsigned int
     tLT,
     tGT,
 
+    tNEG_MINUS,
+
     tIDENTIFIER,
     tNUMBER,
 
@@ -172,8 +178,9 @@ std::map<std::string, TokenTypes> tokenLookup
     {"|", TokenTypes::tOR},
     {"~", TokenTypes::tNOT},
     {"<", TokenTypes::tLT},
-    {">", TokenTypes::tGT}
-
+    {">", TokenTypes::tGT},
+    {"-", TokenTypes::tNEG_MINUS}
+    
 #ifdef DEBUG    
     // ,
     // {"_ROOT_", TokenTypes::tROOT},
