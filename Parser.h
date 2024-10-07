@@ -507,11 +507,6 @@ public:
                 auto *operNode = ALLOC_AST_NODE(token, pState.getLayer());
 
                 // start of the expression, parent is while, for or general stms
-                
-                if (stackTop->aType == AstNodeTypes::aNEG_MINUS)
-                {
-                    std::cout << "yooo\n";
-                }
                 if (!isoperator(aType_to_tType(stackTop->aType)) || greaterPreced(*operNode, *stackTop))
                 {       
                     operNode->addChild(curTermNode);

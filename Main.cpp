@@ -250,7 +250,13 @@ public:
                 lexState.tokens.emplace_back(TokenTypes::tIDENTIFIER, lexState.identifiers.size()-1);
             }
         }
-        lexState.lastOperTermIsOper = false;
+        // Only considered a term (alhpanumeric)
+        // if we are on the right handside.
+        // TODO: see if can be moved too Parser,
+        // otherwise we are bringing semantics
+        // to syntactic analyzer.
+        if (lexState.onRhs)
+            lexState.lastOperTermIsOper = false;
     }
 
     void symbolStateBeh(UsefulString &ustr, lexerState &lexState)
@@ -286,9 +292,18 @@ public:
         std::string s(1, c);
         tokenMapIter it = tokenLookup.find(s);
         if (it != tokenLookup.end())
-        {
-            if (it->first[0] == ')')
-                lexState.lastOperTermIsOper = false;
+        {   
+            // only updating if on the right hand side
+            if (lexState.onRhs)
+            {
+                if (it->first[0] == ')')
+                    lexState.lastOperTermIsOper = false;
+            }
+
+            // can't happen when the above triggered
+            // so the order doesn't matter
+            if (it->second == TokenTypes::tEQUAL)
+                lexState.onRhs = true;
 
             if (it->second == TokenTypes::tMINUS)
             {

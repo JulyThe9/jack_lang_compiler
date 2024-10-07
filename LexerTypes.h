@@ -23,9 +23,12 @@ struct lexerState
 
     tokensVect tokens;
     identifierVect identifiers;
-    // whether the last oper or term token
-    // is operator, false -> term
-    bool lastOperTermIsOper = false;
+    // Whether the last oper or term token
+    // is operator, false -> term.
+    // Starting at true for when the expr
+    // starts with -. E.g. x = -8
+    bool lastOperTermIsOper = true;
+    bool onRhs = false;
 
     void flush()
     {
@@ -60,7 +63,8 @@ struct lexerState
                commentOpen = false;
         }
         fsmCurState = LexFsmStates::sINIT;
-        lastOperTermIsOper = false;
+        lastOperTermIsOper = true;
+        onRhs = false;
     }
 };
 
