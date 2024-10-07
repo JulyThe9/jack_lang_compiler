@@ -48,6 +48,7 @@ enum class AstNodeTypes : unsigned int
     aNOT,
     aLT,
     aGT,
+    aNEG_MINUS,
 
     aIDENTIFIER,
     aNUMBER,
@@ -213,6 +214,8 @@ std::map<TokenTypes, AstNodeTypes> tTypes_to_aTypes
     {TokenTypes::tLT, AstNodeTypes::aLT},
     {TokenTypes::tGT, AstNodeTypes::aGT},
 
+    {TokenTypes::tNEG_MINUS, AstNodeTypes::aNEG_MINUS},
+
     {TokenTypes::tIDENTIFIER, AstNodeTypes::aIDENTIFIER},
     {TokenTypes::tNUMBER, AstNodeTypes::aNUMBER}
 };
@@ -261,7 +264,8 @@ enum class ParseFsmStates : unsigned int
 std::map<TokenTypes, int> precedLookup
 {
     {TokenTypes::tEQUAL, 3},
-    {TokenTypes::tACCESS, 6},
+    {TokenTypes::tACCESS, 7},
+    {TokenTypes::tNEG_MINUS, 6},
     {TokenTypes::tPLUS, 4},
     {TokenTypes::tMINUS, 4},
     {TokenTypes::tMULT, 5},

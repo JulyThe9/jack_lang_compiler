@@ -197,9 +197,13 @@ std::map<std::string, TokenTypes> tokenLookup
 #endif
 };
 
-bool isoperator(TokenTypes tType)
+bool isbinaryperator(TokenTypes tType)
 {
     return tType >= TokenTypes::tPLUS && tType <= TokenTypes::tGT;
+}
+bool isoperator(TokenTypes tType)
+{
+    return isbinaryperator(tType) || tType== TokenTypes::tNEG_MINUS;
 }
 
 // tType is meta-language (C++) type VS.

@@ -303,7 +303,7 @@ public:
             else
             {
                 lexState.tokens.push_back(it->second);
-                if (isoperator(it->second))
+                if (isbinaryperator(it->second))
                     lexState.lastOperTermIsOper = true;
             }   
         }

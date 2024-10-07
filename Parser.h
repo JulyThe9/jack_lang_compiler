@@ -496,7 +496,7 @@ public:
                 else if (token.tType == TokenTypes::tFALSE || token.tType == TokenTypes::tNULL)
                     curTermNode = ALLOC_AST_NODE(AstNodeTypes::aNUMBER, 0);
             }
-            else if (isoperator(token.tType))
+            else if (isbinaryperator(token.tType))
             {
                 // stack top (potentially operator)
                 auto *stackTop = pState.getStackTop();
@@ -507,6 +507,11 @@ public:
                 auto *operNode = ALLOC_AST_NODE(token, pState.getLayer());
 
                 // start of the expression, parent is while, for or general stms
+                
+                if (stackTop->aType == AstNodeTypes::aNEG_MINUS)
+                {
+                    std::cout << "yooo\n";
+                }
                 if (!isoperator(aType_to_tType(stackTop->aType)) || greaterPreced(*operNode, *stackTop))
                 {       
                     operNode->addChild(curTermNode);
@@ -515,9 +520,25 @@ public:
                     continue;
                 }
 
-                stackTop->addChild(curTermNode);
-                operNode->addChild(stackTop);
-                pState.popStackTop();
+                // We need to go up in stack until
+                // we find an operator that is not of greater
+                // preced than that of operNode.
+                // See: 8 - 1 * (5+7) - 2
+                // vs 8 - (1 * (5+7) - 2)
+                do
+                {
+                    stackTop->addChild(curTermNode);
+                    curTermNode = stackTop;
+                    pState.popStackTop();
+                    stackTop = pState.getStackTop();
+                    if (stackTop == NULL 
+                        || !isoperator(aType_to_tType(stackTop->aType)))
+                    {
+                        break;
+                    }
+                }
+                while (!greaterPreced(*operNode, *stackTop));
+                operNode->addChild(curTermNode);
                 pState.addStackTop(operNode);
             }
             else if (token.tType == TokenTypes::tLPR)
@@ -549,6 +570,10 @@ public:
                 while (stackTop->aType != AstNodeTypes::aARRAY);
                 assert(stackTop->aType == AstNodeTypes::aARRAY);
                 curTermNode = stackTop;
+            }
+            else if (token.tType == TokenTypes::tNEG_MINUS)
+            {
+                pState.addStackTop(ALLOC_AST_NODE(token, pState.getLayer()));
             }
 
             pState.advance();

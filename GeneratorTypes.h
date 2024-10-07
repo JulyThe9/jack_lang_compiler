@@ -43,6 +43,7 @@ std::map<AstNodeTypes, std::string> generationLookup
     {AstNodeTypes::aNOT,      "not\r\n"},
     {AstNodeTypes::aLT,       "lt\r\n"},
     {AstNodeTypes::aGT,       "gt\r\n"},
+    {AstNodeTypes::aNEG_MINUS,"neg\r\n"},
 
     // function-related
     // aFUNC_DEF,
