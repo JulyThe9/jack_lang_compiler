@@ -137,6 +137,69 @@ enum class TokenTypes : unsigned int
     tUNKNOWN_SYMBOL    
 };
 
+#ifdef LEXER_DEBUG
+std::map<TokenTypes, std::string> tTypes_to_strings 
+{
+    {TokenTypes::tCLASS, "CLASS"},
+    {TokenTypes::tCONSTRUCTOR, "CONSTRUCTOR"},
+    {TokenTypes::tMETHOD, "METHOD"},
+    {TokenTypes::tFUNCTION, "FUNCTION"},
+    {TokenTypes::tVAR, "VAR"},
+    {TokenTypes::tSTATIC, "STATIC"},
+    {TokenTypes::tFIELD, "FIELD"},
+    {TokenTypes::tLET, "LET"},
+    {TokenTypes::tDO, "DO"},
+    {TokenTypes::tIF, "IF"},
+    {TokenTypes::tELSE, "ELSE"},
+    {TokenTypes::tWHILE, "WHILE"},
+    {TokenTypes::tRETURN, "RETURN"},
+    {TokenTypes::tTRUE, "TRUE"},
+    {TokenTypes::tFALSE, "FALSE"},
+    {TokenTypes::tNULL, "NULL"},
+    {TokenTypes::tTHIS, "THIS"},
+    {TokenTypes::tTHAT, "THAT"},
+    {TokenTypes::tINT, "INT"},
+    {TokenTypes::tBOOLEAN, "BOOLEAN"},
+    {TokenTypes::tCHAR, "CHAR"},
+    {TokenTypes::tVOID, "VOID"},
+    {TokenTypes::tARRAY, "ARRAY"},
+    {TokenTypes::tLPR, "LPR"},
+    {TokenTypes::tRPR, "RPR"},
+    {TokenTypes::tLBR, "LBR"},
+    {TokenTypes::tRBR, "RBR"},
+    {TokenTypes::tLCURL, "LCURL"},
+    {TokenTypes::tRCURL, "RCURL"},
+    {TokenTypes::tCOMMA, "COMMA"},
+    {TokenTypes::tSEMICOLON, "SEMICOLON"},
+    {TokenTypes::tACCESS, "ACCESS"},
+    {TokenTypes::tEQUAL, "EQUAL"},
+    {TokenTypes::tPLUS, "PLUS"},
+    {TokenTypes::tMINUS, "MINUS"},
+    {TokenTypes::tMULT, "MULT"},
+    {TokenTypes::tDIV, "DIV"},
+    {TokenTypes::tAND, "AND"},
+    {TokenTypes::tOR, "OR"},
+    {TokenTypes::tNOT, "NOT"},
+    {TokenTypes::tLT, "LT"},
+    {TokenTypes::tGT, "GT"},
+    {TokenTypes::tNEG_MINUS, "NEG_MINUS"},
+    {TokenTypes::tIDENTIFIER, "IDENTIFIER"},
+    {TokenTypes::tNUMBER, "NUMBER"},
+    {TokenTypes::tUNKNOWN_SYMBOL, "UNKNOWN_SYMBOL"}
+};
+const std::string &tType_to_strings(TokenTypes tType)
+{
+    auto iter = tTypes_to_strings.find(tType);
+    if (iter != tTypes_to_strings.end())
+        return iter->second;
+    
+    auto unkIter = tTypes_to_strings.find(TokenTypes::tUNKNOWN_SYMBOL);
+
+    assert (unkIter != tTypes_to_strings.end());
+    return unkIter->second;
+}
+#endif
+
 std::map<std::string, TokenTypes> tokenLookup
 {
     {"class", TokenTypes::tCLASS},

@@ -80,12 +80,18 @@ enum class AstNodeTypes : unsigned int
     aTHAT_WRITE,
 
     // function-related
+    // def
     // for function name
     aFUNC_DEF,
     // for parnum in function name parnum
     aFUNC_LOCNUM,
     // for pushing the return value
     aFUNC_RET_VAL,
+    // call
+    // argnum is the root, 
+    // because we generate code for it latest (as per tree traversal)
+    aFUNC_ARGNUM,
+    aFUNC_CALL,
 
     aCTOR_ALLOC,
 
@@ -157,6 +163,8 @@ std::map<AstNodeTypes, std::string> aTypes_to_strings
     {AstNodeTypes::aFUNC_DEF, "FUNC_DEF"},
     {AstNodeTypes::aFUNC_LOCNUM, "FUNC_LOCNUM"},
     {AstNodeTypes::aFUNC_RET_VAL, "FUNC_RET_VAL"},
+    {AstNodeTypes::aFUNC_ARGNUM, "aFUNC_ARGNUM"},
+    {AstNodeTypes::aFUNC_CALL, "FUNC_CALL"},
     {AstNodeTypes::aCTOR_ALLOC, "CTOR_ALLOC"},
     {AstNodeTypes::aFIELD_VAR_READ,  "FIELD_VAR_READ"},
     {AstNodeTypes::aFIELD_VAR_WRITE, "FIELD_VAR_WRITE"},
@@ -257,7 +265,7 @@ enum class ParseFsmStates : unsigned int
     sSTATIC_DECL,
     sCTOR_DEF,
     sFUNC_DEF,
-    sFUNC_CALL,
+    sFUNC_DO_CALL,
     sRETURN
 };
 
@@ -389,8 +397,13 @@ public:
     }
     void addChild(AstNode *child)
     {
+        assert(child != NULL);
         nChildNodes.push_back(child);
         nChildNodes.back()->setParent(this);
+    }
+    unsigned int getNumOfChildren() const
+    {
+        return nChildNodes.size();
     }
 
 #ifdef DEBUG
@@ -507,6 +520,11 @@ public:
 
     bool declaringLocals = false;
 
+    unsigned int getCurLineNum() const
+    {
+        // TODO: line nums
+        return 0;
+    }
     const std::vector<ClassData> &getClasses() const
     {
         return classes;
@@ -711,6 +729,11 @@ public:
         //         std::cerr << "ERR: UNKNOWN VARIABLE NAME: " << getIdent()->at(identNameID) << '\n';
         // #endif
         return {VarScopes::scUNKNOWN, 0};
+    }
+
+    std::tuple<bool, unsigned int> findFunction(int identNameID)
+    {
+        return getCurParseClass()->containsFunc(identNameID);
     }
 
     auto *getTokens()

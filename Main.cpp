@@ -298,12 +298,21 @@ public:
             {
                 if (it->first[0] == ')')
                     lexState.lastOperTermIsOper = false;
+                // a hack to treat - as negation and not subtraction after ','
+                // e.g. calc(14, -a);
+                else if (it->first[0] == ',')
+                    lexState.lastOperTermIsOper = true;
             }
 
             // can't happen when the above triggered
             // so the order doesn't matter
-            if (it->second == TokenTypes::tEQUAL)
+            if (it->second == TokenTypes::tEQUAL 
+                // expr/term start withing ()
+                // e.g. calc(-25)
+                || it->second == TokenTypes::tLPR)
+            {
                 lexState.onRhs = true;
+            }
 
             if (it->second == TokenTypes::tMINUS)
             {
@@ -488,12 +497,12 @@ bool compilerCtrl(const char *pathIn, const char *pathOut)
         // error
         return 1;
     }
-
+#ifdef LEXER_DEBUG
     auto printTokens = [](const tokensVect &tokens)
     {
         for (auto elem : tokens)
         {
-            std::cout << "Token type: "  << (unsigned int)elem.tType << '\n';
+            std::cout << "Token type: "  << tType_to_strings(elem.tType) << '\n';
             if (elem.tVal.has_value())    
                 std::cout << "Token val: " << elem.tVal.value() << '\n';
             else
@@ -501,6 +510,7 @@ bool compilerCtrl(const char *pathIn, const char *pathOut)
         }
         std::cout << '\n';
     };
+#endif
     auto printIdentifiers = [](const identifierVect &identifiers)
     {
         int i = 0;

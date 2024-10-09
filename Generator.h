@@ -68,7 +68,8 @@ public:
 
         // TODO: this makes the whole gen process less generic,
         // see if can be unified
-        if (astNode->aType == AstNodeTypes::aFUNC_DEF)
+        if (astNode->aType == AstNodeTypes::aFUNC_DEF 
+            || astNode->aType == AstNodeTypes::aFUNC_CALL)
         {
             assert (astNode->getNodeValue() < identifiers.size());
             std::string res = codeLine.substr(0, wcardPos) 

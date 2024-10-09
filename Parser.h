@@ -36,7 +36,7 @@ private:
 
     void orderWhileLabels(AstNode *whileNode)
     {
-        assert(whileNode->nChildNodes.size() == 5);
+        assert(whileNode->getNumOfChildren() == 5);
         assert(whileNode->aType == AstNodeTypes::aWHILE);
 
         auto *whStartNode = whileNode->nChildNodes[0];
@@ -207,7 +207,7 @@ public:
                 pState.fsmCurState = ParseFsmStates::sVAR_DECL;
                 break;
             case TokenTypes::tDO:
-                pState.fsmCurState = ParseFsmStates::sFUNC_CALL;
+                pState.fsmCurState = ParseFsmStates::sFUNC_DO_CALL;
                 break;
             case TokenTypes::tLET:
                 pState.fsmCurState = ParseFsmStates::sVAR_ASSIGN;
@@ -445,8 +445,79 @@ public:
         return true;
     }
 
-    bool funcCallStateBeh(parserState &pState)
+    bool funcDoCallStateBeh(parserState &pState)
     {
+        auto &doToken = pState.getCurToken();
+        createStackTopNode(pState, doToken);
+        // current token is tDO
+        auto &funcToken = pState.advanceAndGet();
+        if (pState.getTokensFinished())
+            return pState.fsmTerminate(false);
+
+        const bool res = parseFuncCall(pState);
+        pState.popStackTop();
+        pState.fsmCurState = ParseFsmStates::sSTATEMENT_DECIDE;
+        
+        return res;
+    }
+
+    bool parseFuncCall(parserState &pState)
+    {
+        auto &funcToken = pState.getCurToken();
+        assert (funcToken.tType == TokenTypes::tIDENTIFIER);
+        const unsigned int nameID = funcToken.tVal.value();
+
+        if (!pState.advance())
+            return pState.fsmTerminate(false);
+
+        if (pState.getCurToken().tType != TokenTypes::tLPR)
+        {
+            // TODO: error: syntax
+            return false;
+        }
+
+        while (true)
+        {
+            if (!pState.advance())
+                return pState.fsmTerminate(false);
+
+            parseExpr(pState);
+            // here - stack reparenting?
+
+            auto token = pState.getCurToken();
+            if (token.tType == TokenTypes::tRPR)
+            {
+                break;
+            }
+            else if (token.tType != TokenTypes::tCOMMA)
+                return pState.fsmTerminate(false);
+        }
+
+
+        // checking that we designed the processing correctly
+        // hence assert
+        assert(pState.getCurToken().tType == TokenTypes::tRPR);
+        auto &curToken = pState.advanceAndGet();
+        if (pState.getTokensFinished())
+            return pState.fsmTerminate(false);
+        
+        if (curToken.tType != TokenTypes::tSEMICOLON)
+        {
+#ifdef ERR_DEBUG
+                std::cerr << "ERR: MISSING SEMICOLON, LINE: " << pState.getCurLineNum() << '\n';
+#endif
+                // TODO: error: missing semicolon
+            return pState.fsmTerminate(false);
+        }
+        pState.advance();
+
+        auto *stackTop = pState.getStackTop();
+        assert(stackTop->aType == AstNodeTypes::aDO);
+        const unsigned int numArgs = stackTop->getNumOfChildren();
+
+        pState.addStackTopChild(ALLOC_AST_NODE(AstNodeTypes::aFUNC_CALL, nameID));
+        pState.addStackTopChild(ALLOC_AST_NODE(AstNodeTypes::aFUNC_ARGNUM, numArgs));
+
         return true;
     }
 
@@ -482,7 +553,16 @@ public:
                 }
                 else
                 {
-                    // TODO: could be function call or class object name
+                    auto [contains, idx] = pState.findFunction(token.tVal.value());
+                    if (contains)
+                    {
+                        // legowelt
+                        // implement funcCallStateBeh first
+                    }
+                    else
+                    {
+                        // check object
+                    }
                 }
             }
             else if (isexprkeyword(token.tType))
@@ -565,6 +645,10 @@ public:
                 while (stackTop->aType != AstNodeTypes::aARRAY);
                 assert(stackTop->aType == AstNodeTypes::aARRAY);
                 curTermNode = stackTop;
+            }
+            else if (token.tType == TokenTypes::tCOMMA)
+            {
+                break;
             }
             else if (token.tType == TokenTypes::tNEG_MINUS)
             {
@@ -985,9 +1069,9 @@ public:
                 returnStateBeh(pState);
                 break;
 
-            case ParseFsmStates::sFUNC_CALL:
-                debug_strm << "sFUNC_CALL hits\n";
-                funcCallStateBeh(pState);
+            case ParseFsmStates::sFUNC_DO_CALL:
+                debug_strm << "sFUNC_DO_CALL hits\n";
+                funcDoCallStateBeh(pState);
                 break;
 
             }

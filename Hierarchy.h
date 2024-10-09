@@ -252,7 +252,13 @@ public:
             [&identNameID](const VariableData  &field){ return field.nameID == identNameID; });
         return {iter != staticVars.end(), 
                 std::distance(staticVars.begin(), iter)};
-        
+    }
+    std::tuple<bool, unsigned int> containsFunc(unsigned int identNameID) const
+    {
+        auto iter = std::find_if(funcs.begin(), funcs.end(), 
+            [&identNameID](const FunctionData &func){ return func.nameID == identNameID; });
+        return {iter != funcs.end(), 
+                std::distance(funcs.begin(), iter)};
     }
 };
 std::vector<VariableData> ClassData::staticVars;
