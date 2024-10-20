@@ -650,6 +650,7 @@ public:
     void incLayer() {layerCoeff+=LAYER_INCR;}
     void decLayer() {layerCoeff-=LAYER_DECR;}
     void resetLayer() {layerCoeff = 0;}
+    void restoreLayer(int storedLayer) { layerCoeff = storedLayer; }
 
     void addStackTopChild(AstNode *child)
     {

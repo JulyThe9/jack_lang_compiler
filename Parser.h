@@ -33,6 +33,13 @@ private:
         pState.addStackTop(astNode);
         return astNode;
     }
+    inline AstNode *createStackTopNode(parserState &pState, AstNodeTypes aType)
+    {
+        AstNode *astNode = ALLOC_AST_NODE(aType);
+        pState.addStackTopChild(astNode);
+        pState.addStackTop(astNode);
+        return astNode;
+    }
 
     void orderWhileLabels(AstNode *whileNode)
     {
@@ -454,62 +461,61 @@ public:
         if (pState.getTokensFinished())
             return pState.fsmTerminate(false);
 
-        const bool res = parseFuncCall(pState);
+        auto [res, funcCallRoot] = parseFuncCall(pState);
         pState.popStackTop();
+
+        if (pState.getCurToken().tType != TokenTypes::tRPR)
+        {
+            return pState.fsmTerminate(false);
+        }
+        auto &curToken = pState.advanceAndGet();
+        if (pState.getTokensFinished())
+            return pState.fsmTerminate(false);
+
+        if (curToken.tType != TokenTypes::tSEMICOLON)
+        {
+            return pState.fsmTerminate(false);
+        }
+        pState.advance();
+
         pState.fsmCurState = ParseFsmStates::sSTATEMENT_DECIDE;
-        
         return res;
     }
 
-    bool parseFuncCall(parserState &pState)
+    std::tuple<bool, AstNode*> parseFuncCall(parserState &pState)
     {
         auto &funcToken = pState.getCurToken();
         assert (funcToken.tType == TokenTypes::tIDENTIFIER);
         const unsigned int nameID = funcToken.tVal.value();
 
         if (!pState.advance())
-            return pState.fsmTerminate(false);
+            return {pState.fsmTerminate(false), NULL};
 
         if (pState.getCurToken().tType != TokenTypes::tLPR)
         {
             // TODO: error: syntax
-            return false;
+            return {false, NULL};
         }
 
         while (true)
         {
             if (!pState.advance())
-                return pState.fsmTerminate(false);
+                return {pState.fsmTerminate(false), NULL};
 
             parseExpr(pState);
             // here - stack reparenting?
 
             auto token = pState.getCurToken();
-            if (token.tType == TokenTypes::tRPR)
+            if (token.tType != TokenTypes::tCOMMA)
             {
                 break;
             }
-            else if (token.tType != TokenTypes::tCOMMA)
-                return pState.fsmTerminate(false);
         }
-
 
         // checking that we designed the processing correctly
         // hence assert
-        assert(pState.getCurToken().tType == TokenTypes::tRPR);
-        auto &curToken = pState.advanceAndGet();
-        if (pState.getTokensFinished())
-            return pState.fsmTerminate(false);
-        
-        if (curToken.tType != TokenTypes::tSEMICOLON)
-        {
-#ifdef ERR_DEBUG
-                std::cerr << "ERR: MISSING SEMICOLON, LINE: " << pState.getCurLineNum() << '\n';
-#endif
-                // TODO: error: missing semicolon
-            return pState.fsmTerminate(false);
-        }
-        pState.advance();
+        assert(pState.getCurToken().tType == TokenTypes::tRPR || 
+            pState.getCurToken().tType == TokenTypes::tSEMICOLON);
 
         auto *stackTop = pState.getStackTop();
         assert(stackTop->aType == AstNodeTypes::aDO);
@@ -518,13 +524,11 @@ public:
         pState.addStackTopChild(ALLOC_AST_NODE(AstNodeTypes::aFUNC_CALL, nameID));
         pState.addStackTopChild(ALLOC_AST_NODE(AstNodeTypes::aFUNC_ARGNUM, numArgs));
 
-        return true;
+        return {true, stackTop};
     }
 
-    void parseExpr(parserState &pState)
-    {
-        auto storedState = pState.fsmCurState;
-    
+    AstNode *parseExpr(parserState &pState)
+    {    
         AstNode *curTermNode = NULL;
         // checking if expr is finished
         while (true)
@@ -556,8 +560,13 @@ public:
                     auto [contains, idx] = pState.findFunction(token.tVal.value());
                     if (contains)
                     {
-                        // legowelt
-                        // implement funcCallStateBeh first
+                        pState.addStackTop(ALLOC_AST_NODE(AstNodeTypes::aDO));
+                        const int curLayer = pState.getLayer();
+                        pState.resetLayer();
+                        auto [res, funcCallRoot] = parseFuncCall(pState);
+                        curTermNode = funcCallRoot;
+                        pState.restoreLayer(curLayer);
+                        pState.popStackTop();
                     }
                     else
                     {
@@ -590,7 +599,7 @@ public:
                 if (!isoperator(aType_to_tType(stackTop->aType)) || greaterPreced(*operNode, *stackTop))
                 {       
                     operNode->addChild(curTermNode);
-                    pState.addStackTop(operNode);      
+                    pState.addStackTop(operNode);
                     pState.advance();
                     continue;
                 }
@@ -660,7 +669,9 @@ public:
 
         auto *stackTop = pState.getStackTop();
         assert(stackTop != NULL);
-        stackTop->addChild(curTermNode);    
+        
+        if (curTermNode != NULL)
+            stackTop->addChild(curTermNode);    
 
         // either create isexprconnectornode (for array, func call, etc.)
         // or exclude tSTATEMENTS from isconnectornode
@@ -674,6 +685,7 @@ public:
         }
 
         pState.resetLayer();
+        return stackTop;
     }
 
     bool whileStateBeh(parserState &pState)

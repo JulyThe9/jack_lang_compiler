@@ -285,8 +285,12 @@ public:
         if (c == '/')
         {
             ustr.fwd();
-            lexState.fsmCurState = LexFsmStates::sCOMMENT;
-            return;
+            if (ustr.getChar() == '/')
+            {
+                lexState.fsmCurState = LexFsmStates::sCOMMENT;
+                return;
+            }
+            ustr.bwd();
         }
 
         std::string s(1, c);
