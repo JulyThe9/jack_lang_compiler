@@ -70,8 +70,10 @@ enum class AstNodeTypes : unsigned int
     aSTATEMENTS,
     aLOCAL_VAR_READ,
     aARG_VAR_READ,
+    aTEMP_VAR_READ,
     aLOCAL_VAR_WRITE,
     aARG_VAR_WRITE,
+    aTEMP_VAR_WRITE,  
 
     // obj and arr reading/writing
     aTHIS_READ,
@@ -154,8 +156,10 @@ std::map<AstNodeTypes, std::string> aTypes_to_strings
     {AstNodeTypes::aSTATEMENTS, "STATEMENTS"},
     {AstNodeTypes::aLOCAL_VAR_READ,"LOCAL_VAR_READ"},
     {AstNodeTypes::aARG_VAR_READ, "ARG_VAR_READ"},
+    {AstNodeTypes::aTEMP_VAR_READ, "TEMP_VAR_READ"},
     {AstNodeTypes::aLOCAL_VAR_WRITE, "LOCAL_VAR_WRITE"},
     {AstNodeTypes::aARG_VAR_WRITE, "ARG_VAR_WRITE"},
+    {AstNodeTypes::aTEMP_VAR_WRITE, "TEMP_VAR_WRITE"},
     {AstNodeTypes::aTHIS_READ, "THIS_READ"},
     {AstNodeTypes::aTHIS_WRITE, "THIS_WRITE"},
     {AstNodeTypes::aTHAT_READ, "THAT_READ"},

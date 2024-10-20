@@ -476,8 +476,10 @@ public:
         {
             return pState.fsmTerminate(false);
         }
-        pState.advance();
 
+        auto *stackTop = pState.getStackTop();
+        stackTop->addChild(ALLOC_AST_NODE(AstNodeTypes::aTEMP_VAR_WRITE, 0));
+        pState.advance();
         pState.fsmCurState = ParseFsmStates::sSTATEMENT_DECIDE;
         return res;
     }
