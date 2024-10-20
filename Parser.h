@@ -423,9 +423,9 @@ public:
         funcNode->addChild(ALLOC_AST_NODE(AstNodeTypes::aSTATEMENTS));
         pState.addStackTop(funcNode->nChildNodes.back());
 
-        if (curParseFunc.ldType_ret != LangDataTypes::ldVOID)
+        if (curParseFunc.ldType_ret == LangDataTypes::ldVOID)
         {
-            funcNode->addChild(ALLOC_AST_NODE(AstNodeTypes::aFUNC_RET_VAL));
+            funcNode->addChild(ALLOC_AST_NODE(AstNodeTypes::aNUMBER, 0));
         }
 
         pState.fsmCurState = ParseFsmStates::sSTATEMENT_DECIDE;
