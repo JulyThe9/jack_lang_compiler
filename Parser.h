@@ -248,6 +248,9 @@ public:
             case TokenTypes::tFUNCTION:
                 pState.fsmCurState = ParseFsmStates::sFUNC_DEF;
                 break;
+            case TokenTypes::tMETHOD:
+                pState.fsmCurState = ParseFsmStates::sMETHOD_DEF;
+                break;             
             case TokenTypes::tRCURL:
                 pState.fsmCurState = ParseFsmStates::sBLOCK_CLOSE;
                 break;
@@ -381,7 +384,7 @@ public:
         return true;
     }
 
-    bool funcDefStateBeh(parserState &pState)
+    bool funcDefStateBeh(parserState &pState, bool isMethod)
     {
         // token is function at this point
         // advancing to return type
@@ -420,8 +423,16 @@ public:
         funcNode->addChild(ALLOC_AST_NODE(AstNodeTypes::aFUNC_DEF, curParseFunc.nameID));
         funcNode->addChild(ALLOC_AST_NODE(AstNodeTypes::aFUNC_LOCNUM, 0));
 
-        funcNode->addChild(ALLOC_AST_NODE(AstNodeTypes::aSTATEMENTS));
+        auto *stmtsNode = ALLOC_AST_NODE(AstNodeTypes::aSTATEMENTS);
+        funcNode->addChild(stmtsNode);
         pState.addStackTop(funcNode->nChildNodes.back());
+
+        // method specific things, adding this
+        if (isMethod)
+        {
+            stmtsNode->addChild(ALLOC_AST_NODE(AstNodeTypes::aARG_VAR_READ, 0));
+            stmtsNode->addChild(ALLOC_AST_NODE(AstNodeTypes::aTHIS_WRITE, 0));
+        }
 
         if (curParseFunc.ldType_ret == LangDataTypes::ldVOID)
         {
@@ -1075,7 +1086,11 @@ public:
 
             case ParseFsmStates::sFUNC_DEF:
                 debug_strm << "sFUNC_DEF hits\n";
-                funcDefStateBeh(pState);
+                funcDefStateBeh(pState, false);
+                break;
+            case ParseFsmStates::sMETHOD_DEF:
+                debug_strm << "sMETHOD_DEF hits\n";
+                funcDefStateBeh(pState, true);
                 break;
 
             case ParseFsmStates::sRETURN:

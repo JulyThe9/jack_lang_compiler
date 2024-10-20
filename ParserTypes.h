@@ -269,6 +269,7 @@ enum class ParseFsmStates : unsigned int
     sSTATIC_DECL,
     sCTOR_DEF,
     sFUNC_DEF,
+    sMETHOD_DEF,
     sFUNC_DO_CALL,
     sRETURN
 };
