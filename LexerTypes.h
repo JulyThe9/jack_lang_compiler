@@ -275,12 +275,18 @@ bool isoperator(TokenTypes tType)
 
 // tType is meta-language (C++) type VS.
 // the value of it corresponds to object language (Jack) type
-bool isvartype(TokenTypes tType)
+
+bool isprimitivevartype(TokenTypes tType)
 {
     return tType == TokenTypes::tINT    ||
         tType == TokenTypes::tBOOLEAN   ||
         tType == TokenTypes::tCHAR      ||
-        tType == TokenTypes::tVOID      ||
+        tType == TokenTypes::tVOID;
+}
+
+bool isvartype(TokenTypes tType)
+{
+    return isprimitivevartype(tType) ||
         tType == TokenTypes::tIDENTIFIER;
 }
 

@@ -566,7 +566,18 @@ public:
                 auto [varScope, idx] = pState.findVariable(token.tVal.value());
                 if (varScope != VarScopes::scUNKNOWN)
                 {
-                    curTermNode = ALLOC_AST_NODE(varScopeToAccessType(varScope), idx);
+                    const VariableData &varData = pState.getVariableInScope(varScope, idx);
+
+                    // primitive type, can be used in the expression as is;
+                    // need lookahead if we want to do something like obj1 + obj2
+                    if (isprimitivevartype(ldType_to_tType(varData.valueType)))
+                    {
+                        curTermNode = ALLOC_AST_NODE(varScopeToAccessType(varScope), idx);
+                    }
+                    else
+                    {
+                        // object, expecting . and method call
+                    }
                 }
                 else
                 {

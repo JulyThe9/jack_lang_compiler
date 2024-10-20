@@ -578,7 +578,7 @@ public:
         // this is the class we are currently defining
         curParseClass->setIsDefined(true);
     }
-    ClassData *getCurParseClass()
+    ClassData *getCurParseClass() const
     {
         return curParseClass;
     }
@@ -596,7 +596,7 @@ public:
         return getCurParseClass()->addFunc(nameID, ldType_ret, isCtor);
     }
     
-    FunctionData *getCurParseFunc()
+    FunctionData *getCurParseFunc() const
     {
         auto *curParseClass = getCurParseClass();
         if (curParseClass == NULL)
@@ -634,6 +634,23 @@ public:
     std::tuple<bool, unsigned int> containsStatic(int identNameID)
     {
         return getCurParseClass()->containsStatic(identNameID);
+    }
+    
+    const VariableData &getArgVar(unsigned int idx) const
+    {
+        return getCurParseFunc()->getArgVar(idx);
+    }
+    const VariableData &getLocalVar(unsigned int idx) const
+    {
+        return getCurParseFunc()->getLocalVar(idx);
+    }
+    const VariableData &getFieldVar(unsigned int idx) const
+    {
+        return getCurParseClass()->getFieldVar(idx);
+    }
+    const VariableData &getStaticVar(unsigned int idx) const
+    {
+        return getCurParseClass()->getStaticVar(idx);
     }
 
     parserState( tokensVect &tokens, identifierVect &identifiers) : 
@@ -706,7 +723,7 @@ public:
         return classID_to_ldType(classID);
     }    
 
-    std::tuple<VarScopes, unsigned int> findVariable(int identNameID)
+    std::tuple<VarScopes, unsigned int> findVariable(unsigned int identNameID)
     {   
         // LOCAL
         auto [contains, idx] = containsLocal(identNameID);
@@ -728,18 +745,33 @@ public:
         if (contains)
             return {VarScopes::scSTATIC, idx};
 
-        // might be a function or object name
-        // adding a dummy term to continue parsing the expression correctly
-        // #ifdef ERR_DEBUG
-        //         assert (identNameID < getIdent()->size());
-        //         std::cerr << "ERR: UNKNOWN VARIABLE NAME: " << getIdent()->at(identNameID) << '\n';
-        // #endif
+        // might be a function or Class(?) name
         return {VarScopes::scUNKNOWN, 0};
     }
 
     std::tuple<bool, unsigned int> findFunction(int identNameID)
     {
         return getCurParseClass()->containsFunc(identNameID);
+    }
+
+    const VariableData &getVariableInScope(VarScopes varScope, unsigned int idx) const
+    {
+        if (varScope == VarScopes::scLOCAL)
+            return getLocalVar(idx);
+
+        if (varScope == VarScopes::scARG)
+            return getArgVar(idx);
+
+        if (varScope == VarScopes::scFIELD)
+            return getFieldVar(idx);
+
+        if (varScope == VarScopes::scSTATIC)
+            return getStaticVar(idx);
+
+        assert(false);
+        // to not have the missing return warning
+        VariableData dummy(0, LangDataTypes::ldUNKNOWN);
+        return dummy;
     }
 
     auto *getTokens()

@@ -42,6 +42,11 @@ public:
     {
         return localVars.size();
     }
+    const VariableData &getVar(unsigned int idx) const
+    {
+        assert(idx < localVars.size());
+        return localVars[idx];
+    }
 };
 struct LocalScopeManager
 {
@@ -75,6 +80,11 @@ protected:
     {
         assert(!locScopeFrames.empty());
         return locScopeFrames.top().containsVar(nameID);
+    }
+    const VariableData &getLocalVar(unsigned int idx) const
+    {
+        assert(!locScopeFrames.empty());
+        return locScopeFrames.top().getVar(idx);
     }
 
     unsigned int getNumOfLocals() const
@@ -146,6 +156,16 @@ public:
     std::tuple<bool, unsigned int> containsLocal(unsigned int identNameID)
     {
         return containsLocalVar(identNameID);
+    }
+
+    const VariableData &getArgVar(unsigned int ID) const 
+    {
+        assert(ID < argVars.size());
+        return argVars[ID];
+    }
+    const VariableData &getLocalVar(unsigned int idx) const 
+    {
+        return LocalScopeManager::getLocalVar(idx);
     }
 
     unsigned int getNumOfPars() const
@@ -260,6 +280,19 @@ public:
         return {iter != funcs.end(), 
                 std::distance(funcs.begin(), iter)};
     }
+
+    const VariableData &getFieldVar(unsigned int idx) const
+    {
+        assert(idx < fieldVars.size());
+        return fieldVars[idx];
+    }
+
+    const VariableData &getStaticVar(unsigned int idx) const
+    {
+        assert(idx < fieldVars.size());
+        return fieldVars[idx];
+    }
+
 };
 std::vector<VariableData> ClassData::staticVars;
 
