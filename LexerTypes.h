@@ -137,7 +137,7 @@ enum class TokenTypes : unsigned int
     tUNKNOWN_SYMBOL    
 };
 
-#ifdef LEXER_DEBUG
+#if defined(LEXER_DEBUG) || defined(ERR_DEBUG)
 std::map<TokenTypes, std::string> tTypes_to_strings 
 {
     {TokenTypes::tCLASS, "CLASS"},

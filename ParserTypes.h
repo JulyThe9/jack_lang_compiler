@@ -534,6 +534,12 @@ public:
     {
         return classes;
     }
+    ClassData &getClassByID(int classID)
+    {
+        assert(classID < classes.size());
+        assert(classID == classes[classID].getID());
+        return classes[classID];
+    }
     std::tuple<bool, unsigned int> containsClass(unsigned int nameID)
     {
         auto iter = std::find_if(classes.begin(), classes.end(), 
@@ -719,7 +725,6 @@ public:
             addClass(classNameID, isDefined);
         }
 
-
         return classID_to_ldType(classID);
     }    
 
@@ -749,8 +754,12 @@ public:
         return {VarScopes::scUNKNOWN, 0};
     }
 
-    std::tuple<bool, unsigned int> findFunction(int identNameID)
+    std::tuple<bool, unsigned int> findFunction(int identNameID, int classID)
     {
+        if (classID >= 0)
+        {
+            return getClassByID(classID).containsFunc(identNameID);
+        }
         return getCurParseClass()->containsFunc(identNameID);
     }
 

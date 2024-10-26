@@ -541,8 +541,24 @@ public:
     }
 
     AstNode *parseExpr(parserState &pState)
-    {    
+    {           
         AstNode *curTermNode = NULL;
+        auto handleFuncNodes = [&](TokenData &token, int classID = -1)
+        {
+            auto [contains, idx] = pState.findFunction(token.tVal.value(), classID);
+            if (contains)
+            {
+                pState.addStackTop(ALLOC_AST_NODE(AstNodeTypes::aDO));
+                const int curLayer = pState.getLayer();
+                pState.resetLayer();
+                auto [res, funcCallRoot] = parseFuncCall(pState);
+                curTermNode = funcCallRoot;
+                pState.restoreLayer(curLayer);
+                pState.popStackTop();
+            }
+            return contains;
+        };
+
         // checking if expr is finished
         while (true)
         {   
@@ -576,25 +592,47 @@ public:
                     }
                     else
                     {
-                        // object, expecting . and method call
+                        auto *token = &(pState.advanceAndGet());
+                        if (pState.getTokensFinished())
+                        {
+                            pState.fsmTerminate(false);
+                            return NULL;
+                        }
+                        if (token->tType != TokenTypes::tACCESS)
+                        {
+                            pState.fsmTerminate(false);
+                            return NULL;
+                        }
+                        token = &(pState.advanceAndGet());
+                        if (pState.getTokensFinished())
+                        {
+                            pState.fsmTerminate(false);
+                            return NULL;
+                        }
+                        if (token->tType == TokenTypes::tIDENTIFIER)
+                        {
+                            if (!handleFuncNodes(*token, ldType_to_classID(varData.valueType)))
+                            {
+                            #ifdef ERR_DEBUG
+                                std::cerr << "ERR: UNKNOWN IDENTIFIER: " << pState.getIdent()->at(token->tVal.value()) << '\n';
+                            #endif
+                            }
+                        }
+                        else
+                        {
+                        #ifdef ERR_DEBUG
+                            std::cerr << "ERR: EXPECTED IDENTIFIER, BUT FOUND: " << tType_to_strings(token->tType) << '\n';
+                        #endif
+                        }
                     }
                 }
                 else
                 {
-                    auto [contains, idx] = pState.findFunction(token.tVal.value());
-                    if (contains)
+                    if (!handleFuncNodes(token))
                     {
-                        pState.addStackTop(ALLOC_AST_NODE(AstNodeTypes::aDO));
-                        const int curLayer = pState.getLayer();
-                        pState.resetLayer();
-                        auto [res, funcCallRoot] = parseFuncCall(pState);
-                        curTermNode = funcCallRoot;
-                        pState.restoreLayer(curLayer);
-                        pState.popStackTop();
-                    }
-                    else
-                    {
-                        // check object
+                    #ifdef ERR_DEBUG
+                        std::cerr << "ERR: UNKNOWN IDENTIFIER: " << pState.getIdent()->at(token.tVal.value()) << '\n';
+                    #endif
                     }
                 }
             }
