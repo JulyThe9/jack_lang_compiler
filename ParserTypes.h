@@ -739,7 +739,8 @@ public:
         std::tie(contains, idx) = containsArg(identNameID);
         if (contains)
             return {VarScopes::scARG, idx};
-
+        
+        // legowelt TODO: only do this if curParseFunc is a method
         // FIELD
         std::tie(contains, idx) = containsField(identNameID);
         if (contains)

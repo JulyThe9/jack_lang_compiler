@@ -498,6 +498,7 @@ public:
     std::tuple<bool, AstNode*> parseFuncCall(parserState &pState)
     {
         auto &funcToken = pState.getCurToken();
+        // legowelt TODO: called on object or class behavior
         assert (funcToken.tType == TokenTypes::tIDENTIFIER);
         const unsigned int nameID = funcToken.tVal.value();
 
@@ -510,6 +511,7 @@ public:
             return {false, NULL};
         }
 
+        // legowelt TODO: somewhere here push *this* if func called on object (i.e. is a method)
         while (true)
         {
             if (!pState.advance())
@@ -534,6 +536,7 @@ public:
         assert(stackTop->aType == AstNodeTypes::aDO);
         const unsigned int numArgs = stackTop->getNumOfChildren();
 
+        // legowelt TODO: checking that function exists in curParseClass or class of obj it's called on
         pState.addStackTopChild(ALLOC_AST_NODE(AstNodeTypes::aFUNC_CALL, nameID));
         pState.addStackTopChild(ALLOC_AST_NODE(AstNodeTypes::aFUNC_ARGNUM, numArgs));
 
@@ -626,6 +629,7 @@ public:
                         }
                     }
                 }
+                // legowelt TODO: might be a class name : add this case
                 else
                 {
                     if (!handleFuncNodes(token))
@@ -941,8 +945,11 @@ public:
             // TODO: why never reached?
             pState.fsmCurState = ParseFsmStates::sSTATEMENT_DECIDE;
         }
-        else
-            pState.fsmCurState = ParseFsmStates::sSTATEMENT_DECIDE;
+        // NOTE: allows the same file have different classes
+        else if (pState.getStackTop()->aType == AstNodeTypes::aROOT)
+        {
+            pState.fsmCurState = ParseFsmStates::sINIT;
+        }
     }
 
     bool varDeclStateBeh(parserState &pState)
