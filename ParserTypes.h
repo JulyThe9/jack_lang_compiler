@@ -534,12 +534,22 @@ public:
     {
         return classes;
     }
-    ClassData &getClassByID(int classID)
+    ClassData &getClassByID(unsigned int classID)
     {
+        assert(!classes.empty());
         assert(classID < classes.size());
         assert(classID == classes[classID].getID());
         return classes[classID];
     }
+    const FunctionData &getFuncByIDFromClass(unsigned int funcID, int classID = -1)
+    {
+        if (classID >= 0)
+        {
+            return getClassByID(classID).getFuncByID(funcID);
+        }
+        return getCurParseClass()->getFuncByID(funcID);
+    }
+
     std::tuple<bool, unsigned int> containsClass(unsigned int nameID)
     {
         auto iter = std::find_if(classes.begin(), classes.end(), 
@@ -597,9 +607,10 @@ public:
         getCurParseClass()->addStaticVar(nameID, valueType);
     }
 
-    bool addCurParseClassFunc(unsigned int nameID, LangDataTypes ldType_ret, bool isCtor = false)
+    bool addCurParseClassFunc(unsigned int nameID, LangDataTypes ldType_ret,
+        bool isMethod, bool isCtor = false)
     {
-        return getCurParseClass()->addFunc(nameID, ldType_ret, isCtor);
+        return getCurParseClass()->addFunc(nameID, ldType_ret, isMethod, isCtor);
     }
     
     FunctionData *getCurParseFunc() const
@@ -607,7 +618,7 @@ public:
         auto *curParseClass = getCurParseClass();
         if (curParseClass == NULL)
             return NULL;
-        return curParseClass->getFunc();
+        return curParseClass->getLastFunc();
     }
     void addCurParseFuncPar(unsigned int nameID, LangDataTypes ldType_par)
     {
@@ -740,11 +751,16 @@ public:
         if (contains)
             return {VarScopes::scARG, idx};
         
-        // legowelt TODO: only do this if curParseFunc is a method
         // FIELD
-        std::tie(contains, idx) = containsField(identNameID);
-        if (contains)
-            return {VarScopes::scFIELD, idx};
+        // NOTE: a constructor is not a method in asense that you cannot
+        // call it on an object, but it must still be possible to access the
+        // field variables from it
+        if (getCurParseFunc()->isMethod || getCurParseFunc()->isCtor)
+        {
+            std::tie(contains, idx) = containsField(identNameID);
+            if (contains)
+                return {VarScopes::scFIELD, idx};
+        }
 
         // STATIC
         std::tie(contains, idx) = containsStatic(identNameID);

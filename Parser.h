@@ -177,6 +177,7 @@ public:
         auto [classExists, idx] = pState.containsClass(classNameID);
         if (classExists)
         {
+            assert(pState.getClassByID(idx).getIsDefined() == false);
             pState.setCurParseClass(idx);
         }
         else 
@@ -268,6 +269,10 @@ public:
         if (pState.getTokensFinished())
             return pState.fsmTerminate(false);
 
+        // legowelt TODO: checkCreateUserDefinedDataType in case we declare
+        // a var of user def type (class) that hasn't been defined yet
+        // NOTE: SAME IN varDeclStateBeh
+
         if (!isvartype(valTypeToken.tType))
             return pState.fsmTerminate(false);
 
@@ -350,8 +355,11 @@ public:
         assert(token->tType == TokenTypes::tIDENTIFIER);
         assert(token->tVal.has_value());
 
+        // NOTE: this is needed to not do obj.constructor
+        // see twin-note in ParserTypes::findVariable
+        const bool isMethod = false;
         const bool isCtor = true;
-        if (!pState.addCurParseClassFunc(token->tVal.value(), ctorRetType, isCtor))
+        if (!pState.addCurParseClassFunc(token->tVal.value(), ctorRetType, isMethod, isCtor))
         {
             // TODO: error: ctor already defined
             return pState.fsmTerminate(false);
@@ -373,7 +381,7 @@ public:
 
         // memory commands
         ctorNode->addChild(ALLOC_AST_NODE(AstNodeTypes::aCTOR_ALLOC,
-            pState.getCurParseFunc()->getNumOfPars()));
+            pState.getCurParseClass()->getFieldVars().size()));
 
         ctorNode->addChild(ALLOC_AST_NODE(AstNodeTypes::aSTATEMENTS));
         pState.addStackTop(ctorNode->nChildNodes.back());
@@ -408,7 +416,7 @@ public:
         assert(token->tType == TokenTypes::tIDENTIFIER);
         assert(token->tVal.has_value());
 
-        pState.addCurParseClassFunc(token->tVal.value(), ldType_ret);
+        pState.addCurParseClassFunc(token->tVal.value(), ldType_ret, isMethod);
         // advancing to (
         pState.advance();
         parseFuncPars(pState);
@@ -471,8 +479,30 @@ public:
         auto &funcToken = pState.advanceAndGet();
         if (pState.getTokensFinished())
             return pState.fsmTerminate(false);
+        
+        assert (funcToken.tType == TokenTypes::tIDENTIFIER);
+        assert (funcToken.tVal.has_value());
 
-        auto [res, funcCallRoot] = parseFuncCall(pState);
+        // legowelt TODO: -1 until we implement finding calling on objs/classes in here
+        int TEMP_classID = -1;
+        auto [contains, funcID] = pState.findFunction(funcToken.tVal.value(), TEMP_classID);
+
+        if (contains)
+        {
+            if (pState.getFuncByIDFromClass(funcID, TEMP_classID).isMethod)
+            {
+                pState.addStackTopChild(ALLOC_AST_NODE(AstNodeTypes::aTHIS_READ, 0));
+            }
+        }
+        else
+        {
+            // TODO: error: UNKNOWN IDENTIFIER
+        #ifdef ERR_DEBUG
+            std::cerr << "ERR: UNKNOWN IDENTIFIER: " << pState.getIdent()->at(funcToken.tVal.value()) << '\n';
+        #endif
+        }
+
+        auto [res, funcCallRoot] = parseFuncCallArgs(pState);
         pState.popStackTop();
 
         if (pState.getCurToken().tType != TokenTypes::tRPR)
@@ -495,11 +525,12 @@ public:
         return res;
     }
 
-    std::tuple<bool, AstNode*> parseFuncCall(parserState &pState)
+    std::tuple<bool, AstNode*> parseFuncCallArgs(parserState &pState)
     {
         auto &funcToken = pState.getCurToken();
         // legowelt TODO: called on object or class behavior
         assert (funcToken.tType == TokenTypes::tIDENTIFIER);
+        assert (funcToken.tVal.has_value());
         const unsigned int nameID = funcToken.tVal.value();
 
         if (!pState.advance())
@@ -546,20 +577,70 @@ public:
     AstNode *parseExpr(parserState &pState)
     {           
         AstNode *curTermNode = NULL;
-        auto handleFuncNodes = [&](TokenData &token, int classID = -1)
+        auto handleFuncNodes = [&](TokenData &token, bool expectFunc, bool expectMethod,
+            int classID = -1)
         {
-            auto [contains, idx] = pState.findFunction(token.tVal.value(), classID);
+            // legowelt TODO: makes sense to have checkcreateFunction instead of findFunction
+            auto [contains, funcID] = pState.findFunction(token.tVal.value(), classID);
             if (contains)
             {
                 pState.addStackTop(ALLOC_AST_NODE(AstNodeTypes::aDO));
+
+                if (pState.getFuncByIDFromClass(funcID, classID).isMethod)
+                {
+                    pState.addStackTopChild(ALLOC_AST_NODE(AstNodeTypes::aTHIS_READ, 0));
+                }
+
                 const int curLayer = pState.getLayer();
                 pState.resetLayer();
-                auto [res, funcCallRoot] = parseFuncCall(pState);
+                auto [res, funcCallRoot] = parseFuncCallArgs(pState);
                 curTermNode = funcCallRoot;
                 pState.restoreLayer(curLayer);
                 pState.popStackTop();
             }
             return contains;
+        };
+
+        auto parseFuncCall = [&](int classID, bool expectFunc, bool expectMethod)
+        {
+            auto *token = &(pState.advanceAndGet());
+            bool continueParsing = true;
+            if (pState.getTokensFinished())
+            {
+                pState.fsmTerminate(false);
+                continueParsing = false;
+            }
+            if (token->tType != TokenTypes::tACCESS)
+            {
+                pState.fsmTerminate(false);
+                continueParsing = false;
+            }
+            token = &(pState.advanceAndGet());
+            if (pState.getTokensFinished())
+            {
+                pState.fsmTerminate(false);
+                continueParsing = false;
+            }
+            if (token->tType == TokenTypes::tIDENTIFIER)
+            {
+                if (!handleFuncNodes(*token, expectFunc, expectMethod, classID))
+                {
+                    // TODO: error: UNKNOWN IDENTIFIER
+                #ifdef ERR_DEBUG
+                    std::cerr << "ERR: UNKNOWN IDENTIFIER: " << pState.getIdent()->at(token->tVal.value()) << '\n';
+                #endif
+                }
+
+                continueParsing = true;
+            }
+            else
+            {
+            #ifdef ERR_DEBUG
+                std::cerr << "ERR: EXPECTED IDENTIFIER, BUT FOUND: " << tType_to_strings(token->tType) << '\n';
+            #endif
+                continueParsing = true;
+            }
+            return continueParsing;
         };
 
         // checking if expr is finished
@@ -595,44 +676,27 @@ public:
                     }
                     else
                     {
-                        auto *token = &(pState.advanceAndGet());
-                        if (pState.getTokensFinished())
-                        {
-                            pState.fsmTerminate(false);
+                        // do not expect function, but expect method,
+                        // we are calling on object of class
+                        if (!parseFuncCall(ldType_to_classID(varData.valueType), false, true))
                             return NULL;
-                        }
-                        if (token->tType != TokenTypes::tACCESS)
-                        {
-                            pState.fsmTerminate(false);
-                            return NULL;
-                        }
-                        token = &(pState.advanceAndGet());
-                        if (pState.getTokensFinished())
-                        {
-                            pState.fsmTerminate(false);
-                            return NULL;
-                        }
-                        if (token->tType == TokenTypes::tIDENTIFIER)
-                        {
-                            if (!handleFuncNodes(*token, ldType_to_classID(varData.valueType)))
-                            {
-                            #ifdef ERR_DEBUG
-                                std::cerr << "ERR: UNKNOWN IDENTIFIER: " << pState.getIdent()->at(token->tVal.value()) << '\n';
-                            #endif
-                            }
-                        }
-                        else
-                        {
-                        #ifdef ERR_DEBUG
-                            std::cerr << "ERR: EXPECTED IDENTIFIER, BUT FOUND: " << tType_to_strings(token->tType) << '\n';
-                        #endif
-                        }
                     }
                 }
-                // legowelt TODO: might be a class name : add this case
                 else
                 {
-                    if (!handleFuncNodes(token))
+                    // internal if, because we need to record containsClass res
+                    // legowelt TODO: use checkCreateUserDefinedDataType over containsClass
+                    auto [classExists, classID] = pState.containsClass(token.tVal.value());
+                    if (classExists)
+                    {   
+                        // expect function but not method,
+                        // we are calling on class
+                        if (!parseFuncCall(classID, true, false))
+                            return NULL;
+                    }
+                    // can be both a method and a function (called in current class, so
+                    // can't derive this info beforehand like in cases above)
+                    else if (!handleFuncNodes(token, true, true))
                     {
                     #ifdef ERR_DEBUG
                         std::cerr << "ERR: UNKNOWN IDENTIFIER: " << pState.getIdent()->at(token.tVal.value()) << '\n';

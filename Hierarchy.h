@@ -116,7 +116,9 @@ public:
 
 struct FunctionData : public LocalScopeManager, public IDable
 {
-    unsigned int nameID;
+    unsigned int nameID = 0;
+    bool isMethod = false;
+    bool isCtor = false;
     LangDataTypes ldType_ret;
     std::vector<VariableData> argVars;
 
@@ -125,8 +127,8 @@ public:
     {
         addNewFrame();
     }
-    FunctionData(unsigned int nameID, LangDataTypes ldType_ret) 
-        : nameID(nameID), ldType_ret(ldType_ret)
+    FunctionData(unsigned int nameID, LangDataTypes ldType_ret, bool isMethod = false) 
+        : nameID(nameID), isMethod(isMethod), ldType_ret(ldType_ret)
     {
         addNewFrame();
     }
@@ -201,6 +203,7 @@ public:
     {
         return isDefined;
     }
+
     // Getter for funcs
     const std::vector<FunctionData>& getFuncs() const {
         return funcs;
@@ -220,14 +223,22 @@ public:
         return (LangDataTypes)getID();
     }
 
-    FunctionData *getFunc()
+    FunctionData *getLastFunc()
     {
         if (funcs.empty())
             return NULL;
         return &(funcs.back());
     }
 
-    bool addFunc(unsigned int nameID, LangDataTypes ldType_ret, bool isCtor = false)
+    const FunctionData &getFuncByID(unsigned int funcID)
+    {
+        assert(!funcs.empty());
+        assert(funcID < funcs.size());
+        assert(funcID == funcs[funcID].getID());
+        return funcs[funcID];
+    }
+
+    bool addFunc(unsigned int nameID, LangDataTypes ldType_ret, bool isMethod, bool isCtor = false)
     {
         if (isCtor)
         {
@@ -237,8 +248,10 @@ public:
             ctorAdded = true;
         }
 
-        auto &func = funcs.emplace_back(nameID, ldType_ret);
+        auto &func = funcs.emplace_back(nameID, ldType_ret, isMethod);
         func.setID(funcs.size()-1);
+        func.isCtor = isCtor;
+
         return true;
     }
 
