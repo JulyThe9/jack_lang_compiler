@@ -491,7 +491,7 @@ public:
         {
             if (pState.getFuncByIDFromClass(funcID, TEMP_classID).isMethod)
             {
-                pState.addStackTopChild(ALLOC_AST_NODE(AstNodeTypes::aTHIS_READ, 0));
+                pState.addStackTopChild(ALLOC_AST_NODE(AstNodeTypes::aTHIS_READ));
             }
         }
         else
@@ -575,10 +575,25 @@ public:
     }
 
     AstNode *parseExpr(parserState &pState)
-    {           
+    {   
+        struct FuncMethodData
+        {
+            bool expectFunc;
+            bool expectMethod;
+            // scope of the variable which is
+            // the object that we call a method on
+            AstNodeTypes varAccessType;
+            // its idx in the container for the
+            // corresponding scope
+            unsigned int varIdx;
+
+            FuncMethodData(bool expectFunc, bool expectMethod, AstNodeTypes varAccessType, unsigned int varIdx)
+                : expectFunc(expectFunc), expectMethod(expectMethod), varAccessType(varAccessType), varIdx(varIdx)
+            {}
+        };
+
         AstNode *curTermNode = NULL;
-        auto handleFuncNodes = [&](TokenData &token, bool expectFunc, bool expectMethod,
-            int classID = -1)
+        auto handleFuncNodes = [&](TokenData &token, FuncMethodData &funcMethodData, int classID = -1)
         {
             // legowelt TODO: makes sense to have checkcreateFunction instead of findFunction
             auto [contains, funcID] = pState.findFunction(token.tVal.value(), classID);
@@ -588,7 +603,17 @@ public:
 
                 if (pState.getFuncByIDFromClass(funcID, classID).isMethod)
                 {
-                    pState.addStackTopChild(ALLOC_AST_NODE(AstNodeTypes::aTHIS_READ, 0));
+                    // pusing the address of the object on which the method is called
+                    /*
+                    e.g.
+                    var NiceHello nh;
+                    let nh = NiceHello.new(25,100);
+                    return nh.nhelloFunc(700);
+                    In this case, we do push local 0 
+                    for pushing nh as the first argument of nhelloFunc
+                    */
+                    pState.addStackTopChild(ALLOC_AST_NODE(funcMethodData.varAccessType, 
+                        funcMethodData.varIdx));
                 }
 
                 const int curLayer = pState.getLayer();
@@ -601,7 +626,7 @@ public:
             return contains;
         };
 
-        auto parseFuncCall = [&](int classID, bool expectFunc, bool expectMethod)
+        auto parseFuncCall = [&](int classID, FuncMethodData &funcMethodData)
         {
             auto *token = &(pState.advanceAndGet());
             bool continueParsing = true;
@@ -623,7 +648,7 @@ public:
             }
             if (token->tType == TokenTypes::tIDENTIFIER)
             {
-                if (!handleFuncNodes(*token, expectFunc, expectMethod, classID))
+                if (!handleFuncNodes(*token, funcMethodData, classID))
                 {
                     // TODO: error: UNKNOWN IDENTIFIER
                 #ifdef ERR_DEBUG
@@ -663,22 +688,23 @@ public:
             {
                 assert(token.tVal.has_value());
 
-                auto [varScope, idx] = pState.findVariable(token.tVal.value());
+                auto [varScope, varIdx] = pState.findVariable(token.tVal.value());
                 if (varScope != VarScopes::scUNKNOWN)
                 {
-                    const VariableData &varData = pState.getVariableInScope(varScope, idx);
+                    const VariableData &varData = pState.getVariableInScope(varScope, varIdx);
 
                     // primitive type, can be used in the expression as is;
                     // need lookahead if we want to do something like obj1 + obj2
                     if (isprimitivevartype(ldType_to_tType(varData.valueType)))
                     {
-                        curTermNode = ALLOC_AST_NODE(varScopeToAccessType(varScope), idx);
+                        curTermNode = ALLOC_AST_NODE(varScopeToAccessType(varScope), varIdx);
                     }
                     else
                     {
                         // do not expect function, but expect method,
                         // we are calling on object of class
-                        if (!parseFuncCall(ldType_to_classID(varData.valueType), false, true))
+                        FuncMethodData funcMethodData(false, true, varScopeToAccessType(varScope), varIdx);
+                        if (!parseFuncCall(ldType_to_classID(varData.valueType), funcMethodData))
                             return NULL;
                     }
                 }
@@ -691,16 +717,21 @@ public:
                     {   
                         // expect function but not method,
                         // we are calling on class
-                        if (!parseFuncCall(classID, true, false))
+                        FuncMethodData funcMethodData(true, false, varScopeToAccessType(varScope), varIdx);
+                        if (!parseFuncCall(classID, funcMethodData))
                             return NULL;
                     }
-                    // can be both a method and a function (called in current class, so
-                    // can't derive this info beforehand like in cases above)
-                    else if (!handleFuncNodes(token, true, true))
-                    {
+                    else 
+                    {   
+                        // can be both a method and a function (called in current class, so
+                        // can't derive this info beforehand like in cases above)
+                        FuncMethodData funcMethodData(true, true, AstNodeTypes::aTHIS_READ, 0);
+                        if (!handleFuncNodes(token, funcMethodData))
+                        {
                     #ifdef ERR_DEBUG
                         std::cerr << "ERR: UNKNOWN IDENTIFIER: " << pState.getIdent()->at(token.tVal.value()) << '\n';
                     #endif
+                        }
                     }
                 }
             }
