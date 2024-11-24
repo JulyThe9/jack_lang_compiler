@@ -66,25 +66,11 @@ public:
             return;
         }
 
-        // TODO: this makes the whole gen process less generic,
-        // see if can be unified
-        if (astNode->aType == AstNodeTypes::aFUNC_DEF 
-            || astNode->aType == AstNodeTypes::aFUNC_CALL)
-        {
-            assert (astNode->getNodeValue() < identifiers.size());
-            std::string res = codeLine.substr(0, wcardPos) 
-                + identifiers[astNode->getNodeValue()]
-                + codeLine.substr(wcardPos + 1);
-            outputLines.push_back(res);
-        }
-        else
-        {
-            // replacing $ with node value(data)
-            std::string res = codeLine.substr(0, wcardPos) 
-                + std::to_string(astNode->getNodeValue()) 
-                + codeLine.substr(wcardPos + 1);
-            outputLines.push_back(res);
-        }
+        // replacing $ with node value(data)
+        std::string res = codeLine.substr(0, wcardPos) 
+            + astNode->getNodeValueAsString()
+            + codeLine.substr(wcardPos + 1);
+        outputLines.push_back(res);
     }
 
     void generateCode(AstNode *curRoot)

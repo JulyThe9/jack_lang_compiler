@@ -376,7 +376,8 @@ public:
         const auto &ctorFunc = *(pState.getCurParseFunc());
         auto *ctorNode = createStackTopNode(pState, AstNodeTypes::aFUNCTION, ctorFunc.getID());
 
-        ctorNode->addChild(ALLOC_AST_NODE(AstNodeTypes::aFUNC_DEF, ctorFunc.nameID));
+        std::string fullCtorName = craftFullFuncName(pState, *(pState.getCurParseClass()), ctorFunc);
+        ctorNode->addChild(ALLOC_AST_NODE(AstNodeTypes::aFUNC_DEF, fullCtorName));
         ctorNode->addChild(ALLOC_AST_NODE(AstNodeTypes::aFUNC_LOCNUM, 0));
 
         // memory commands
@@ -428,7 +429,8 @@ public:
         const auto &curParseFunc = *(pState.getCurParseFunc());
         auto *funcNode = createStackTopNode(pState, AstNodeTypes::aFUNCTION, curParseFunc.getID());
 
-        funcNode->addChild(ALLOC_AST_NODE(AstNodeTypes::aFUNC_DEF, curParseFunc.nameID));
+        std::string fullFuncName = craftFullFuncName(pState, *(pState.getCurParseClass()), curParseFunc);
+        funcNode->addChild(ALLOC_AST_NODE(AstNodeTypes::aFUNC_DEF, fullFuncName));
         funcNode->addChild(ALLOC_AST_NODE(AstNodeTypes::aFUNC_LOCNUM, 0));
 
         auto *stmtsNode = ALLOC_AST_NODE(AstNodeTypes::aSTATEMENTS);
@@ -502,7 +504,8 @@ public:
         #endif
         }
 
-        auto [res, funcCallRoot] = parseFuncCallArgs(pState);
+        // legowelt TODO: checking that function exists in curParseClass or class of obj it's called on
+        auto [res, funcCallRoot] = parseFuncCallArgs(pState, TEMP_classID);
         pState.popStackTop();
 
         if (pState.getCurToken().tType != TokenTypes::tRPR)
@@ -525,7 +528,7 @@ public:
         return res;
     }
 
-    std::tuple<bool, AstNode*> parseFuncCallArgs(parserState &pState)
+    std::tuple<bool, AstNode*> parseFuncCallArgs(parserState &pState, int classID = -1)
     {
         auto &funcToken = pState.getCurToken();
         // legowelt TODO: called on object or class behavior
@@ -542,15 +545,12 @@ public:
             return {false, NULL};
         }
 
-        // legowelt TODO: somewhere here push *this* if func called on object (i.e. is a method)
         while (true)
         {
             if (!pState.advance())
                 return {pState.fsmTerminate(false), NULL};
 
             parseExpr(pState);
-            // here - stack reparenting?
-
             auto token = pState.getCurToken();
             if (token.tType != TokenTypes::tCOMMA)
             {
@@ -567,8 +567,8 @@ public:
         assert(stackTop->aType == AstNodeTypes::aDO);
         const unsigned int numArgs = stackTop->getNumOfChildren();
 
-        // legowelt TODO: checking that function exists in curParseClass or class of obj it's called on
-        pState.addStackTopChild(ALLOC_AST_NODE(AstNodeTypes::aFUNC_CALL, nameID));
+        std::string fullFuncName = craftFullFuncName(pState, pState.getClassByID(classID), nameID);
+        pState.addStackTopChild(ALLOC_AST_NODE(AstNodeTypes::aFUNC_CALL, fullFuncName));
         pState.addStackTopChild(ALLOC_AST_NODE(AstNodeTypes::aFUNC_ARGNUM, numArgs));
 
         return {true, stackTop};
@@ -618,7 +618,7 @@ public:
 
                 const int curLayer = pState.getLayer();
                 pState.resetLayer();
-                auto [res, funcCallRoot] = parseFuncCallArgs(pState);
+                auto [res, funcCallRoot] = parseFuncCallArgs(pState, classID);
                 curTermNode = funcCallRoot;
                 pState.restoreLayer(curLayer);
                 pState.popStackTop();

@@ -1,6 +1,7 @@
 #include <stack>
 #include <iostream>
 #include <tuple>
+#include <variant>
 
 #include "Hierarchy.h"
 #include "DEBUG_CONTROL.h"
@@ -340,19 +341,29 @@ private:
     AstNode *parentNode = NULL;
 public:
     // any extra fields?
-    explicit AstNode(TokenData &token) : aType(tType_to_aType(token.tType)), aVal(token.tVal),
+    explicit AstNode(TokenData &token) : aType(tType_to_aType(token.tType)),
         nID(assignId()), generatesCode(checkGeneratesCode(aType))
-    {}
+    {
+        if (token.tVal.has_value())
+            aVal = token.tVal.value();
+    }
 
-    AstNode(TokenData &token, int precCoeff) : aType(tType_to_aType(token.tType)), aVal(token.tVal),
+    AstNode(TokenData &token, int precCoeff) : aType(tType_to_aType(token.tType)),
         nPrecCoeff(precCoeff), nID(assignId()), generatesCode(checkGeneratesCode(aType))
-    {}
+    {
+        if (token.tVal.has_value())
+            aVal = token.tVal.value();
+    }
 
     AstNode(AstNodeTypes aType) : aType(aType), nID(assignId()),
         generatesCode(checkGeneratesCode(aType))
     {}
 
-    AstNode(AstNodeTypes aType, int aVal) : aType(aType), aVal(std::make_optional(aVal)), nID(assignId()),
+    AstNode(AstNodeTypes aType, int aVal) : aType(aType), aVal(aVal), nID(assignId()),
+        generatesCode(checkGeneratesCode(aType))
+    {}
+
+    AstNode(AstNodeTypes aType, const std::string &aVal) : aType(aType), aVal(aVal), nID(assignId()),
         generatesCode(checkGeneratesCode(aType))
     {}
 
@@ -368,7 +379,7 @@ public:
     }
 
     AstNodeTypes aType;
-    std::optional<int> aVal;
+    std::variant<std::monostate, int, std::string> aVal;
 
     std::vector<AstNode*> nChildNodes;
     int nPrecCoeff = 0;      // relevant for operators only
@@ -379,7 +390,7 @@ public:
     {
         // making sure no overwriting occurs
         // (programmer's responsibility, hence assert)
-        assert(!aVal.has_value());
+        assert(!aVal.index() != 0);
         aVal = value;
     }
     void overwriteNodeValue(int value)
@@ -389,7 +400,18 @@ public:
 
     int getNodeValue() const
     {
-        return aVal.value();
+        assert(std::holds_alternative<int>(aVal));
+        return std::get<int>(aVal);
+    }
+
+    std::string getNodeValueAsString() const
+    {
+        if (std::holds_alternative<int>(aVal))
+            return std::to_string(std::get<int>(aVal));
+        else if (std::holds_alternative<std::string>(aVal))
+            return std::get<std::string>(aVal);
+        
+        return "";
     }
     
     void setParent(AstNode *parent)
@@ -416,7 +438,14 @@ public:
     {
         std::cout << "AstNode #" << nID << '\n';
         std::cout << "Type: " << aType_to_string(aType) << '\n';
-        std::cout << "Val: " << (aVal.has_value() ? std::to_string(aVal.value()) : "none")  << '\n';
+
+        if (std::holds_alternative<int>(aVal))
+            std::cout << "Val: " << std::to_string(std::get<int>(aVal))  << '\n';
+        else if(std::holds_alternative<std::string>(aVal))
+            std::cout << "Val: " << std::get<std::string>(aVal) << '\n';
+        else
+            std::cout << "Val: None\n";
+
         std::cout << "Children size: " << nChildNodes.size()  << '\n';
         std::cout << "Children:";
         for (auto *elem : nChildNodes)
@@ -506,6 +535,7 @@ bool isblockstart(AstNodeTypes aType)
         || aType == AstNodeTypes::aCLASS;
 }
 
+
 struct parserState
 {
 private:
@@ -534,8 +564,16 @@ public:
     {
         return classes;
     }
-    ClassData &getClassByID(unsigned int classID)
+    ClassData &getClassByID(int classID = -1)
     {
+        if (classID < 0)
+        {
+            assert(getCurParseClass() != NULL);
+            // we could have just said return return *(getCurParseClass()),
+            // but with this we ensure that we DO return an actual class
+            // from classes container
+            return getClassByID(getCurParseClass()->getID());
+        }
         assert(!classes.empty());
         assert(classID < classes.size());
         assert(classID == classes[classID].getID());
@@ -846,3 +884,20 @@ public:
 private:
     int layerCoeff = 0;
 };
+
+std::string craftFullFuncName(parserState &pState, const ClassData &classData, const FunctionData &funcData)
+{   
+    auto &idents = *(pState.getIdent());
+    assert(classData.nameID < idents.size());
+    assert(funcData.nameID < idents.size());
+
+    return idents[classData.nameID] + "." + idents[funcData.nameID];
+}
+std::string craftFullFuncName(parserState &pState, const ClassData &classData, unsigned int funcNameID)
+{   
+    auto &idents = *(pState.getIdent());
+    assert(classData.nameID < idents.size());
+    assert(funcNameID < idents.size());
+
+    return idents[classData.nameID] + "." + idents[funcNameID];
+}
