@@ -740,7 +740,12 @@ public:
         while (!pendParentNodes.empty())
             pendParentNodes.pop();
 
-        // classes comment
+        // NOTE: we are not resetting classes,
+        // because they are SHARED between
+        // multiple translation units.
+        
+        // This function only resets the individual
+        // state for each input source file.
     }
 
     int getLayer() {return layerCoeff;}
