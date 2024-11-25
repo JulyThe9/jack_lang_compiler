@@ -15,7 +15,9 @@
 class Parser
 {
 private:
-    // IMPORTANT: 500 node limit so far
+    // NOTE: IMPORTANT: 500 node limit so far
+    parserState pState;
+
     ArenaAllocator<AstNode> aralloc{ArenaAllocator<AstNode>(MAX_EXPTECTED_AST_NODES)};
     AstNode* astRoot = NULL;
 
@@ -1140,9 +1142,12 @@ public:
         return pState.fsmTerminate(false);
     }
 
-    AstNode *buildAST(tokensVect &tokens, identifierVect &identifiers)
+    AstNode *buildAST(tokensVect &tokens, identifierVect &identifiers, unsigned int tokenOffset)
     {
-        parserState pState(tokens, identifiers);
+        pState.setTokens(&tokens);
+        pState.setIdentifiers(&identifiers);
+        pState.setCurTokenID(tokenOffset);
+
         astRoot = ALLOC_AST_NODE();
         pState.addStackTop(astRoot);
 
@@ -1263,6 +1268,11 @@ public:
         }
 
         return astRoot;
+    }
+
+    void resetState()
+    {
+        pState.resetNonShared();
     }
 
 #ifdef DEBUG

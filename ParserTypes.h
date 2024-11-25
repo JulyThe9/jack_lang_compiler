@@ -544,7 +544,7 @@ private:
     unsigned int curTokenId = 0;
     bool tokensFinished = false;
     ClassData *curParseClass = NULL;
-    
+    int layerCoeff = 0;
 public:
     bool fsmFinished = false;
     bool fsmFinishedCorrectly = true;
@@ -708,19 +708,39 @@ public:
         return getCurParseClass()->getStaticVar(idx);
     }
 
-    parserState( tokensVect &tokens, identifierVect &identifiers) : 
-        tokens(&tokens), identifiers(&identifiers)
+    parserState()
     {
-        reset();
+        identifiers = NULL;
+        classes.clear();
+        resetNonShared();
     }
 
-    void reset()
+    void setTokens(tokensVect *tokensPar)
     {
+        tokens = tokensPar;
+    }
+    void setIdentifiers(identifierVect *identifiersPar)
+    {
+        identifiers = identifiersPar;
+    }
+
+    void resetNonShared()
+    {
+        tokens = NULL;
+        identifiers = NULL;
+        curTokenId = 0;
+        tokensFinished = false;
+        curParseClass = NULL;
+        layerCoeff = 0;
         fsmFinished = false;
         fsmFinishedCorrectly = true;
         fsmCurState = ParseFsmStates::sINIT;
-        curTokenId  = 0;
-        layerCoeff = 0;
+        declaringLocals = false;
+
+        while (!pendParentNodes.empty())
+            pendParentNodes.pop();
+
+        // classes comment
     }
 
     int getLayer() {return layerCoeff;}
@@ -847,6 +867,11 @@ public:
         return identifiers;
     }
 
+    void setCurTokenID(unsigned int curTokenIdPar)
+    {
+        curTokenId = curTokenIdPar;
+    }
+    
     TokenData &getCurToken()
     {
         return tokens->at(curTokenId);
@@ -880,9 +905,6 @@ public:
     {
         return fsmFinished || tokensFinished;
     }
-
-private:
-    int layerCoeff = 0;
 };
 
 std::string craftFullFuncName(parserState &pState, const ClassData &classData, const FunctionData &funcData)

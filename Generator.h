@@ -21,7 +21,7 @@ public:
         std::size_t dotPos = srcFileName.find_last_of(".");
         if (dotPos == std::string::npos)
         {
-            outFilePath = srcFileName + outFileExt;
+            outFilePath = srcFileName + "." + outFileExt;
             return true;
         }
 
@@ -81,5 +81,11 @@ public:
         }
         if (curRoot->generatesCode)
             genForNode(curRoot);
+    }
+
+    void generateAndWrite(AstNode *curRoot)
+    {
+        generateCode(curRoot);
+        writeFile();
     }
 };

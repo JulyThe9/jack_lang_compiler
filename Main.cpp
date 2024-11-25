@@ -480,28 +480,9 @@ public:
     }
 };
 
-// BY COPY BECAUSE WE DON'T WANT TO RELY ON LEXSTATE AT THIS POINT
-void parserCtrl(tokensVect tokens, identifierVect identifiers)
+bool tokenize(const std::string &filePath, Lexer &lexer, lexerState &lexState)
 {
-    Parser parser;
-    Generator generator("main.jack", identifiers);
-     auto *astRoot = parser.buildAST(tokens, identifiers);
-#ifdef DEBUG
-    parser.printAST();
-#endif
-    generator.generateCode(astRoot);
-    generator.writeFile();
-}
-
-bool compilerCtrl(const char *pathIn, const char *pathOut)
-{
-    Lexer lexer;
-    if (!lexer.init(pathIn))
-    {
-        // error
-        return 1;
-    }
-#ifdef LEXER_DEBUG
+    #ifdef LEXER_DEBUG
     auto printTokens = [](const tokensVect &tokens)
     {
         for (auto elem : tokens)
@@ -527,45 +508,73 @@ bool compilerCtrl(const char *pathIn, const char *pathOut)
         std::cout << '\n';
     };
 
-    // TODO: make sure multiple files (still) work
-    lexerState lexState;
-    for (const auto &filePath : lexer.getFilePaths())
+    std::ifstream jackFile;
+    jackFile.open(filePath, std::ios::in);
+    if (!jackFile)
+        return false;
+
+    std::cout << filePath << '\n';
+    lexer.setCurFileName(filePath);
+
+    while (lexer.getMoreLinesComing())
     {
-        std::ifstream jackFile;
-        jackFile.open(filePath, std::ios::in);
-        if (!jackFile)
-            continue;
-
-        std::cout << filePath << '\n';
-        lexer.setCurFileName(filePath);
-
-        // NOTE: used to be here
-        //lexerState lexState;
-        while (lexer.getMoreLinesComing())
+        const bool res = lexer.lexNextLine(&jackFile, lexState);
+        // parsing of the current line failed
+        if (!res)
         {
-            const bool res = lexer.lexNextLine(&jackFile, lexState);
-
-            // TODO: needed?
-            // parsing of the current line failed
-            if (!res)
-            {
-                lexState.reset();
-                continue;
-            }
+            lexState.reset();
+            continue;
+        }
 
 #ifdef LEXER_DEBUG
-            printTokens(lexState.tokens);
-            printIdentifiers(lexState.identifiers);
+        printTokens(lexState.tokens);
+        printIdentifiers(lexState.identifiers);
 #endif
-            lexState.reset();
-        }
-        lexer.resetForFile();
-        jackFile.close();
+
+        lexState.reset();
     }
 
+    jackFile.close();
+    return true;
+}
+
+bool compilerCtrl(const char *pathIn, const char *pathOut)
+{
+    Lexer lexer;
+    lexerState lexState;
+
+    Parser parser;
+
+    if (!lexer.init(pathIn))
+    {
+        // TODO: error
+        return false;
+    }
+
+    unsigned int tokensOffset = 0;
+    for (const auto &filePath : lexer.getFilePaths())
+    {
+        if (!tokenize(filePath, lexer, lexState))
+        {
+            continue;
+        }
+
+        lexer.resetForFile();
+
 #ifndef LEXER_ONLY
-    parserCtrl(lexState.tokens, lexState.identifiers);
+
+        Generator generator(lexer.getCurFileName(), lexState.identifiers);
+        auto *astRoot = parser.buildAST(lexState.tokens, lexState.identifiers, tokensOffset);
+        tokensOffset = lexState.tokens.size();
+    #ifdef DEBUG
+        parser.printAST();
+    #endif
+        generator.generateAndWrite(astRoot);
+
+        parser.resetState();
 #endif
+
+    }
 
     return true;
 }
