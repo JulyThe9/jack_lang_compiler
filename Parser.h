@@ -157,6 +157,17 @@ private:
 
 public:
 
+    void loadSysLibSymbols(unsigned int arrayLib_className_id, unsigned int newName_id)
+    {
+        pState.arrayLib_classID = pState.addClass(arrayLib_className_id, false);
+        // see ctorDefStateBeh for details
+        const bool isMethod = false;
+        const bool isCtor = true;
+        pState.addFuncToClass(pState.arrayLib_classID, newName_id, 
+            classID_to_ldType(pState.arrayLib_classID), 
+            isMethod, isCtor);
+    }
+
     bool initStateBeh(parserState &pState)
     {
         auto *token = &(pState.getCurToken());
@@ -589,6 +600,10 @@ public:
             // corresponding scope
             unsigned int varIdx;
 
+            FuncMethodData(bool expectFunc, bool expectMethod)
+                : expectFunc(expectFunc), expectMethod(expectMethod), 
+                    varAccessType(AstNodeTypes::aUNKNOWN), varIdx(0)
+            {}
             FuncMethodData(bool expectFunc, bool expectMethod, AstNodeTypes varAccessType, unsigned int varIdx)
                 : expectFunc(expectFunc), expectMethod(expectMethod), varAccessType(varAccessType), varIdx(varIdx)
             {}
@@ -663,7 +678,7 @@ public:
             else
             {
             #ifdef ERR_DEBUG
-                std::cerr << "ERR: EXPECTED IDENTIFIER, BUT FOUND: " << tType_to_strings(token->tType) << '\n';
+                std::cerr << "ERR: EXPECTED IDENTIFIER, BUT FOUND: " << tType_to_string(token->tType) << '\n';
             #endif
                 continueParsing = true;
             }
@@ -685,7 +700,14 @@ public:
             {
                 curTermNode = ALLOC_AST_NODE(token);
             }
-            // arrays for later
+            else if (token.tType == TokenTypes::tARRAY)
+            { 
+                // expect function but not method,
+                // we are calling on class (Array)
+                FuncMethodData funcMethodData(true, false);
+                if (!parseFuncCall(pState.arrayLib_classID, funcMethodData))
+                    return NULL;
+            }
             else if (token.tType == TokenTypes::tIDENTIFIER)
             {
                 assert(token.tVal.has_value());
@@ -825,6 +847,14 @@ public:
             else if (token.tType == TokenTypes::tNEG_MINUS)
             {
                 pState.addStackTop(ALLOC_AST_NODE(token, pState.getLayer()));
+            }
+            else
+            {
+                // some TokenTypes entry hasn't been covered by parser
+                assert(false);
+#ifdef ERR_DEBUG   
+                std::cerr << "ERR: TOKEN TYPE NOT COVERED IN PARSER: " << tType_to_string(token.tType) << '\n';
+#endif
             }
 
             pState.advance();

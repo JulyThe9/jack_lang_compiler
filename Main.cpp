@@ -37,6 +37,14 @@ private:
     }
 
 public:
+
+    static std::tuple<unsigned int, unsigned int> loadSysLibIdents(lexerState &lexState)
+    {
+        lexState.identifiers.push_back("Array");
+        lexState.identifiers.push_back("new");
+        return {0,1};
+    }
+
     bool init(const char *path)
     {
         std::error_code ec;
@@ -487,7 +495,7 @@ bool tokenize(const std::string &filePath, Lexer &lexer, lexerState &lexState)
     {
         for (auto elem : tokens)
         {
-            std::cout << "Token type: "  << tType_to_strings(elem.tType) << '\n';
+            std::cout << "Token type: "  << tType_to_string(elem.tType) << '\n';
             if (elem.tVal.has_value())    
                 std::cout << "Token val: " << elem.tVal.value() << '\n';
             else
@@ -542,8 +550,11 @@ bool compilerCtrl(const char *pathIn, const char *pathOut)
 {
     Lexer lexer;
     lexerState lexState;
+    auto [arrayLib_className_id, newName_id] = Lexer::loadSysLibIdents(lexState);
 
     Parser parser;
+    // TODO: the whole loading is temp solution
+    parser.loadSysLibSymbols(arrayLib_className_id, newName_id);
 
     if (!lexer.init(pathIn))
     {

@@ -545,6 +545,7 @@ private:
     bool tokensFinished = false;
     ClassData *curParseClass = NULL;
     int layerCoeff = 0;
+
 public:
     bool fsmFinished = false;
     bool fsmFinishedCorrectly = true;
@@ -554,6 +555,8 @@ public:
     std::vector<ClassData> classes;
 
     bool declaringLocals = false;
+
+    unsigned int arrayLib_classID = 0;
 
     unsigned int getCurLineNum() const
     {
@@ -596,7 +599,8 @@ public:
         return {iter != classes.end(), 
                 std::distance(classes.begin(), iter)};
     }
-    void addClass(unsigned int nameID, bool isDefined = false)
+
+    IDable::idx_in_cont addClass(unsigned int nameID, bool isDefined = false)
     {
         // the next var needed purely due to pointer invalidation after reseizing
         unsigned int curParseClassIdx = 0;
@@ -621,6 +625,8 @@ public:
             // resizing on .emplace_back causes pointer invalidation
            curParseClass = &(classes[curParseClassIdx]);
         }
+
+        return curClass.getID();
     }
     // TODO: CHECKER: after parsing the whole prog (all files):
     // run though classes and see that none have isDefined == false
@@ -649,6 +655,13 @@ public:
         bool isMethod, bool isCtor = false)
     {
         return getCurParseClass()->addFunc(nameID, ldType_ret, isMethod, isCtor);
+    }
+
+    // only for loading system library symbols
+    bool addFuncToClass(int classID, unsigned int nameID, LangDataTypes ldType_ret,
+        bool isMethod, bool isCtor = false)
+    {
+        getClassByID(classID).addFunc(nameID, ldType_ret, isMethod, isCtor);
     }
     
     FunctionData *getCurParseFunc() const
@@ -710,6 +723,7 @@ public:
 
     parserState()
     {
+        arrayLib_classID = 0;
         identifiers = NULL;
         classes.clear();
         resetNonShared();

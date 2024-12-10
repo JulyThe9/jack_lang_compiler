@@ -187,7 +187,7 @@ std::map<TokenTypes, std::string> tTypes_to_strings
     {TokenTypes::tNUMBER, "NUMBER"},
     {TokenTypes::tUNKNOWN_SYMBOL, "UNKNOWN_SYMBOL"}
 };
-const std::string &tType_to_strings(TokenTypes tType)
+const std::string &tType_to_string(TokenTypes tType)
 {
     auto iter = tTypes_to_strings.find(tType);
     if (iter != tTypes_to_strings.end())
@@ -225,7 +225,7 @@ std::map<std::string, TokenTypes> tokenLookup
     {"boolean", TokenTypes::tBOOLEAN},
     {"char", TokenTypes::tCHAR},
     {"void", TokenTypes::tVOID},
-    {"array", TokenTypes::tARRAY},
+    {"Array", TokenTypes::tARRAY},
 
     {"(", TokenTypes::tLPR},
     {")", TokenTypes::tRPR},
@@ -284,9 +284,15 @@ bool isprimitivevartype(TokenTypes tType)
         tType == TokenTypes::tVOID;
 }
 
+bool isarraytype(TokenTypes tType)
+{
+    return tType == TokenTypes::tARRAY;
+}
+
 bool isvartype(TokenTypes tType)
 {
     return isprimitivevartype(tType) ||
+        isarraytype(tType) ||
         tType == TokenTypes::tIDENTIFIER;
 }
 
