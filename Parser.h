@@ -1168,7 +1168,9 @@ public:
         {   
             const bool isWriting = true;
             pState.addStackTopChild(ALLOC_AST_NODE(varScopeToAccessType(varScope, isWriting), idx));
-            
+            // popping aLET node from stack, to go back to aSTATEMENTS
+            pState.popStackTop();
+
             pState.advance();
             pState.fsmCurState = ParseFsmStates::sSTATEMENT_DECIDE;
             return true;
