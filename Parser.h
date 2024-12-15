@@ -823,7 +823,6 @@ public:
             else if (token.tType == TokenTypes::tLBR)
             {
                 auto *arrayNode = ALLOC_AST_NODE(AstNodeTypes::aARRAY);
-                //arrayNode->addChild(curTermNode);
                 pState.addStackTop(arrayNode);
 
                 // To add index to the base adderss of array
