@@ -27,10 +27,11 @@ std::map<AstNodeTypes, std::string> generationLookup
     {AstNodeTypes::aLOCAL_VAR_WRITE, "pop local $\r\n"},
     {AstNodeTypes::aARG_VAR_WRITE,   "pop arg $\r\n"},
     
-    {AstNodeTypes::aTHIS_READ,       "push pointer 0\r\n"},
-    {AstNodeTypes::aTHIS_WRITE,      "pop pointer 0\r\n"}, // ever used?
-    {AstNodeTypes::aTHAT_READ,       "push pointer 1\r\n"},
-    {AstNodeTypes::aTHAT_WRITE,      "pop pointer 1\r\n"}, // ever used?
+    {AstNodeTypes::aPTR_0_READ,       "push pointer 0\r\n"},
+    {AstNodeTypes::aPTR_0_WRITE,      "pop pointer 0\r\n"}, // ever used?
+    {AstNodeTypes::aPTR_1_READ,       "push pointer 1\r\n"},
+    {AstNodeTypes::aPTR_1_WRITE,      "pop pointer 1\r\n"},
+    {AstNodeTypes::aTHAT_0_READ,      "push that 0\r\n"},
 
     // TODO: support =
     {AstNodeTypes::aPLUS,     "add\r\n"},

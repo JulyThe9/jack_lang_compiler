@@ -77,10 +77,13 @@ enum class AstNodeTypes : unsigned int
     aTEMP_VAR_WRITE,  
 
     // obj and arr reading/writing
-    aTHIS_READ,
-    aTHIS_WRITE,
-    aTHAT_READ,
-    aTHAT_WRITE,
+    aPTR_0_READ,
+    aPTR_0_WRITE,
+    aPTR_1_READ,
+
+    // array manipulation
+    aPTR_1_WRITE,
+    aTHAT_0_READ,
 
     // function-related
     // def
@@ -161,10 +164,11 @@ std::map<AstNodeTypes, std::string> aTypes_to_strings
     {AstNodeTypes::aLOCAL_VAR_WRITE, "LOCAL_VAR_WRITE"},
     {AstNodeTypes::aARG_VAR_WRITE, "ARG_VAR_WRITE"},
     {AstNodeTypes::aTEMP_VAR_WRITE, "TEMP_VAR_WRITE"},
-    {AstNodeTypes::aTHIS_READ, "THIS_READ"},
-    {AstNodeTypes::aTHIS_WRITE, "THIS_WRITE"},
-    {AstNodeTypes::aTHAT_READ, "THAT_READ"},
-    {AstNodeTypes::aTHAT_WRITE, "THAT_WRITE"},
+    {AstNodeTypes::aPTR_0_READ, "PTR_0_READ"},
+    {AstNodeTypes::aPTR_0_WRITE, "PTR_0_WRITE"},
+    {AstNodeTypes::aPTR_1_READ, "PTR_1_READ"},
+    {AstNodeTypes::aPTR_1_WRITE, "PTR_1_WRITE"},
+    {AstNodeTypes::aTHAT_0_READ, "THAT_0_READ"},
     {AstNodeTypes::aFUNC_DEF, "FUNC_DEF"},
     {AstNodeTypes::aFUNC_LOCNUM, "FUNC_LOCNUM"},
     {AstNodeTypes::aFUNC_RET_VAL, "FUNC_RET_VAL"},
@@ -428,10 +432,29 @@ public:
         nChildNodes.push_back(child);
         nChildNodes.back()->setParent(this);
     }
+    void addChildConditional(AstNode *child)
+    {
+        if (!containsChildNode(child->nID))
+        {
+            addChild(child);
+        }
+    }
+
     unsigned int getNumOfChildren() const
     {
         return nChildNodes.size();
     }
+private:
+    bool containsChildNode(int nID)
+    {
+        auto iter = std::find_if(nChildNodes.begin(), nChildNodes.end(), 
+            [nID](const AstNode *arg){ return arg->nID == nID; });
+
+        return (iter != nChildNodes.end());
+    }
+
+public:
+
 
 #ifdef DEBUG
     void print()

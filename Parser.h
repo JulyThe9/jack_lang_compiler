@@ -454,7 +454,7 @@ public:
         if (isMethod)
         {
             stmtsNode->addChild(ALLOC_AST_NODE(AstNodeTypes::aARG_VAR_READ, 0));
-            stmtsNode->addChild(ALLOC_AST_NODE(AstNodeTypes::aTHIS_WRITE, 0));
+            stmtsNode->addChild(ALLOC_AST_NODE(AstNodeTypes::aPTR_0_WRITE, 0));
         }
 
         if (curParseFunc.ldType_ret == LangDataTypes::ldVOID)
@@ -506,7 +506,7 @@ public:
         {
             if (pState.getFuncByIDFromClass(funcID, TEMP_classID).isMethod)
             {
-                pState.addStackTopChild(ALLOC_AST_NODE(AstNodeTypes::aTHIS_READ));
+                pState.addStackTopChild(ALLOC_AST_NODE(AstNodeTypes::aPTR_0_READ));
             }
         }
         else
@@ -719,7 +719,8 @@ public:
 
                     // primitive type, can be used in the expression as is;
                     // need lookahead if we want to do something like obj1 + obj2
-                    if (isprimitivevartype(ldType_to_tType(varData.valueType)))
+                    if (isprimitivevartype(ldType_to_tType(varData.valueType)) || 
+                        isarraytype(ldType_to_tType(varData.valueType)))
                     {
                         curTermNode = ALLOC_AST_NODE(varScopeToAccessType(varScope), varIdx);
                     }
@@ -749,7 +750,7 @@ public:
                     {   
                         // can be both a method and a function (called in current class, so
                         // can't derive this info beforehand like in cases above)
-                        FuncMethodData funcMethodData(true, true, AstNodeTypes::aTHIS_READ, 0);
+                        FuncMethodData funcMethodData(true, true, AstNodeTypes::aPTR_0_READ, 0);
                         if (!handleFuncNodes(token, funcMethodData))
                         {
                     #ifdef ERR_DEBUG
@@ -762,9 +763,9 @@ public:
             else if (isexprkeyword(token.tType))
             {
                 if (token.tType == TokenTypes::tTHIS)
-                    curTermNode = ALLOC_AST_NODE(AstNodeTypes::aTHIS_READ);
+                    curTermNode = ALLOC_AST_NODE(AstNodeTypes::aPTR_0_READ);
                 else if (token.tType == TokenTypes::tTHAT)
-                    curTermNode = ALLOC_AST_NODE(AstNodeTypes::aTHAT_READ);
+                    curTermNode = ALLOC_AST_NODE(AstNodeTypes::aPTR_1_READ);
                 else if (token.tType == TokenTypes::tTRUE)
                     curTermNode = ALLOC_AST_NODE(AstNodeTypes::aNUMBER, 1);
                 else if (token.tType == TokenTypes::tFALSE || token.tType == TokenTypes::tNULL)
@@ -824,6 +825,14 @@ public:
                 auto *arrayNode = ALLOC_AST_NODE(AstNodeTypes::aARRAY);
                 arrayNode->addChild(curTermNode);
                 pState.addStackTop(arrayNode);
+                // To add index to the base adderss of array
+                arrayNode->addChild(ALLOC_AST_NODE(AstNodeTypes::aPLUS));
+                pState.addStackTop(arrayNode->nChildNodes.back());
+
+                // special nodes for array code generation using pointer 1 - that 0
+                // semantics from nand2tetris
+                arrayNode->addChild(ALLOC_AST_NODE(AstNodeTypes::aPTR_1_WRITE));
+                arrayNode->addChild(ALLOC_AST_NODE(AstNodeTypes::aTHAT_0_READ));
             }
             else if (token.tType == TokenTypes::tRBR)
             {
@@ -832,7 +841,7 @@ public:
                 {
                     stackTop = pState.getStackTop();
                     assert(stackTop != NULL);
-                    stackTop->addChild(curTermNode);
+                    stackTop->addChildConditional(curTermNode);
                     curTermNode = stackTop;
                     pState.popStackTop();
                 }
