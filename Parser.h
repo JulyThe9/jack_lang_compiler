@@ -823,11 +823,22 @@ public:
             else if (token.tType == TokenTypes::tLBR)
             {
                 auto *arrayNode = ALLOC_AST_NODE(AstNodeTypes::aARRAY);
-                arrayNode->addChild(curTermNode);
+                //arrayNode->addChild(curTermNode);
                 pState.addStackTop(arrayNode);
+
                 // To add index to the base adderss of array
-                arrayNode->addChild(ALLOC_AST_NODE(AstNodeTypes::aPLUS));
-                pState.addStackTop(arrayNode->nChildNodes.back());
+                auto *addressOffsetNode = ALLOC_AST_NODE(AstNodeTypes::aPLUS);
+                // no constructor taking AstNodeTypes and coeff (mixed up with aVal)
+                // simpler to set manually
+                addressOffsetNode->nPrecCoeff = pState.getLayer();
+
+                // increasing layer to not "override" address adding operator
+                // with precedence
+                pState.incLayer();
+
+                arrayNode->addChild(addressOffsetNode);
+                addressOffsetNode->addChild(curTermNode);
+                pState.addStackTop(addressOffsetNode);
 
                 // special nodes for array code generation using pointer 1 - that 0
                 // semantics from nand2tetris
@@ -836,6 +847,7 @@ public:
             }
             else if (token.tType == TokenTypes::tRBR)
             {
+                pState.decLayer();
                 AstNode *stackTop = NULL;
                 do 
                 {
