@@ -325,7 +325,7 @@ EXAMPLES:
 WHILE -> "lbl{" , "EXPR" , "JUMP" , STATEMENTS
 FUNCTION -> FUNC_DEF, FUNC_LOCNUM, STATEMENTS, FUNC_RET_VAL
 */
-struct AstNode
+struct AstNode : DebugData
 {
 private:
     // tbh trivial method, could return true for all and
@@ -347,33 +347,34 @@ private:
     AstNode *parentNode = NULL;
 public:
     // any extra fields?
-    explicit AstNode(TokenData &token) : aType(tType_to_aType(token.tType)),
-        nID(assignId()), generatesCode(checkGeneratesCode(aType))
+    explicit AstNode(TokenData &token) : DebugData(token.debug_lineNum), 
+        aType(tType_to_aType(token.tType)), nID(assignId()), 
+        generatesCode(checkGeneratesCode(aType))
     {
         if (token.tVal.has_value())
             aVal = token.tVal.value();
     }
 
-    AstNode(TokenData &token, int precCoeff) : aType(tType_to_aType(token.tType)),
+    AstNode(TokenData &token, int precCoeff) : DebugData(token.debug_lineNum), aType(tType_to_aType(token.tType)),
         nPrecCoeff(precCoeff), nID(assignId()), generatesCode(checkGeneratesCode(aType))
     {
         if (token.tVal.has_value())
             aVal = token.tVal.value();
     }
 
-    AstNode(AstNodeTypes aType) : aType(aType), nID(assignId()),
+    AstNode(AstNodeTypes aType) : DebugData(0), aType(aType), nID(assignId()),
         generatesCode(checkGeneratesCode(aType))
     {}
 
-    AstNode(AstNodeTypes aType, int aVal) : aType(aType), aVal(aVal), nID(assignId()),
+    AstNode(AstNodeTypes aType, int aVal) : DebugData(0), aType(aType), aVal(aVal), nID(assignId()),
         generatesCode(checkGeneratesCode(aType))
     {}
 
-    AstNode(AstNodeTypes aType, const std::string &aVal) : aType(aType), aVal(aVal), nID(assignId()),
-        generatesCode(checkGeneratesCode(aType))
+    AstNode(AstNodeTypes aType, const std::string &aVal) : DebugData(0), aType(aType), aVal(aVal), 
+        nID(assignId()), generatesCode(checkGeneratesCode(aType))
     {}
 
-    AstNode() : aType(AstNodeTypes::aROOT), nID(assignId()), 
+    AstNode() : DebugData(0), aType(AstNodeTypes::aROOT), nID(assignId()), 
         generatesCode(checkGeneratesCode(AstNodeTypes::aROOT))
     {}
 

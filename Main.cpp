@@ -38,11 +38,12 @@ private:
 
 public:
 
-    static std::tuple<unsigned int, unsigned int> loadSysLibIdents(lexerState &lexState)
+    static std::tuple<unsigned int, unsigned int, unsigned int> loadSysLibIdents(lexerState &lexState)
     {
         lexState.identifiers.push_back("Array");
         lexState.identifiers.push_back("new");
-        return {0,1};
+        lexState.identifiers.push_back("this");
+        return {0,1,2};
     }
 
     bool init(const char *path)
@@ -233,7 +234,7 @@ public:
         // known keyword
         if (it != tokenLookup.end())
         {
-            lexState.tokens.push_back(it->second);
+            lexState.tokens.emplace_back(lexState.lexedLineIdx, it->second);
             return;
         }
 
@@ -242,7 +243,7 @@ public:
         int num = strtol(inBuff.c_str(), &pEnd, 10);
         if (!*pEnd)
         {
-            lexState.tokens.emplace_back(TokenTypes::tNUMBER, num);
+            lexState.tokens.emplace_back(lexState.lexedLineIdx, TokenTypes::tNUMBER, num);
         }
         else
         {
@@ -250,12 +251,14 @@ public:
             // known identifier
             if (identPosNum >= 0)
             {
-                lexState.tokens.emplace_back(TokenTypes::tIDENTIFIER, identPosNum);
+                lexState.tokens.emplace_back(lexState.lexedLineIdx, 
+                    TokenTypes::tIDENTIFIER, identPosNum);
             }
             else
             {
                 lexState.identifiers.push_back(inBuff);
-                lexState.tokens.emplace_back(TokenTypes::tIDENTIFIER, lexState.identifiers.size()-1);
+                lexState.tokens.emplace_back(lexState.lexedLineIdx, 
+                    TokenTypes::tIDENTIFIER, lexState.identifiers.size()-1);
             }
         }
         // Only considered a term (alhpanumeric)
@@ -329,23 +332,23 @@ public:
             if (it->second == TokenTypes::tMINUS)
             {
                 if (lexState.lastOperTermIsOper)
-                    lexState.tokens.push_back(TokenTypes::tNEG_MINUS);
+                    lexState.tokens.emplace_back(lexState.lexedLineIdx, TokenTypes::tNEG_MINUS);
                 else
                 {
-                    lexState.tokens.push_back(TokenTypes::tMINUS);
+                    lexState.tokens.emplace_back(lexState.lexedLineIdx, TokenTypes::tMINUS);
                     lexState.lastOperTermIsOper = true;
                 }
             }
             else
             {
-                lexState.tokens.push_back(it->second);
+                lexState.tokens.emplace_back(lexState.lexedLineIdx, it->second);
                 if (isbinaryperator(it->second))
                     lexState.lastOperTermIsOper = true;
             }   
         }
         else
         {
-            lexState.tokens.push_back(TokenTypes::tUNKNOWN_SYMBOL);
+            lexState.tokens.emplace_back(lexState.lexedLineIdx, TokenTypes::tUNKNOWN_SYMBOL);
         }
 
         ustr.fwd();
@@ -357,7 +360,7 @@ public:
     {
         if (ustr.isEol())
         {
-            lexState.tokens.push_back(TokenTypes::tDIV);
+            lexState.tokens.emplace_back(lexState.lexedLineIdx, TokenTypes::tDIV);
             lexState.fsmFinished = true;
             return;
         }
@@ -379,7 +382,7 @@ public:
         }
         else
         {
-            lexState.tokens.push_back(TokenTypes::tDIV);
+            lexState.tokens.emplace_back(lexState.lexedLineIdx, TokenTypes::tDIV);
 
             ustr.fwd();
             lexState.fsmCurState = LexFsmStates::sSYMBOL;
@@ -480,6 +483,9 @@ public:
         {
             handleBuffer(lexState);
         }
+
+        lexState.lexedLineIdx++;
+
 #ifdef LEXER_DEBUG
         std::cout << "Finished tokenizing line: " << line << '\n';
         std::cout << "Got this many tokens now: " << lexState.tokens.size() << '\n';
@@ -550,9 +556,10 @@ bool compilerCtrl(const char *pathIn, const char *pathOut)
 {
     Lexer lexer;
     lexerState lexState;
-    auto [arrayLib_className_id, newName_id] = Lexer::loadSysLibIdents(lexState);
+    auto [arrayLib_className_id, newName_id, thisName_id] = Lexer::loadSysLibIdents(lexState);
 
     Parser parser;
+    parser.thisNameID = thisName_id;
     // TODO: the whole loading is temp solution
     parser.loadSysLibSymbols(arrayLib_className_id, newName_id);
 

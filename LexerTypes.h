@@ -21,6 +21,7 @@ struct lexerState
     char buffer[20];
     uint8_t bIdx = 0;
 
+    int lexedLineIdx = 0;
     tokensVect tokens;
     identifierVect identifiers;
     // Whether the last oper or term token
@@ -68,14 +69,24 @@ struct lexerState
     }
 };
 
-struct TokenData
+struct DebugData
+{  
+    int debug_lineNum;
+    DebugData(int debug_lineNum) : debug_lineNum(debug_lineNum)
+    {}
+    virtual ~DebugData() = 0;
+};
+DebugData::~DebugData() {}
+
+struct TokenData : DebugData
 {
     TokenTypes tType;
     std::optional<int> tVal;
 
-    TokenData(TokenTypes tType) : tType(tType)
+    TokenData(int debug_lineNum, TokenTypes tType) : DebugData(debug_lineNum), tType(tType)
     {}
-    TokenData(TokenTypes tType, int tVal) : tType(tType), tVal(std::make_optional(tVal))
+    TokenData(int debug_lineNum, TokenTypes tType, int tVal) : DebugData(debug_lineNum),
+        tType(tType), tVal(std::make_optional(tVal))
     {}
 };
 
@@ -266,7 +277,7 @@ std::map<std::string, TokenTypes> tokenLookup
 
 bool isbinaryperator(TokenTypes tType)
 {
-    return tType >= TokenTypes::tPLUS && tType <= TokenTypes::tGT;
+    return tType >= TokenTypes::tEQUAL && tType <= TokenTypes::tGT;
 }
 bool isoperator(TokenTypes tType)
 {

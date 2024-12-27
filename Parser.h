@@ -14,6 +14,8 @@
 
 class Parser
 {
+public:
+    unsigned int thisNameID = 0;
 private:
     // NOTE: IMPORTANT: 500 node limit so far
     parserState pState;
@@ -68,7 +70,7 @@ private:
     {
         assert(ifNode->aType == AstNodeTypes::aIF);
 
-        auto *ifJumpNode = ifNode->nChildNodes[1];
+        auto *ifJumpNode = ifNode->nChildNodes[2];
         assert(ifJumpNode->aType == AstNodeTypes::aIF_JUMP);
 
         // to jump outside of if
@@ -156,7 +158,6 @@ private:
     }
 
 public:
-
     void loadSysLibSymbols(unsigned int arrayLib_className_id, unsigned int newName_id)
     {
         pState.arrayLib_classID = pState.addClass(arrayLib_className_id, false);
@@ -433,6 +434,13 @@ public:
         pState.addCurParseClassFunc(token->tVal.value(), ldType_ret, isMethod);
         // advancing to (
         pState.advance();
+
+        if (isMethod)
+        {   
+            assert(pState.getCurParseFunc() != NULL);
+            pState.getCurParseFunc()->addPar(thisNameID, 
+                pState.getCurParseClass()->asLangDataType());
+        }
         parseFuncPars(pState);
 
         // skipping the {
@@ -457,10 +465,10 @@ public:
             stmtsNode->addChild(ALLOC_AST_NODE(AstNodeTypes::aPTR_0_WRITE, 0));
         }
 
-        if (curParseFunc.ldType_ret == LangDataTypes::ldVOID)
-        {
-            funcNode->addChild(ALLOC_AST_NODE(AstNodeTypes::aNUMBER, 0));
-        }
+        // if (curParseFunc.ldType_ret == LangDataTypes::ldVOID)
+        // {
+        //     funcNode->addChild(ALLOC_AST_NODE(AstNodeTypes::aNUMBER, 0));
+        // }
 
         pState.fsmCurState = ParseFsmStates::sSTATEMENT_DECIDE;
         return true;
@@ -878,7 +886,8 @@ public:
             {
                 // some TokenTypes entry hasn't been covered by parser
 #ifdef ERR_DEBUG   
-                std::cerr << "ERR: TOKEN TYPE NOT COVERED IN PARSER: " << tType_to_string(token.tType) << '\n';
+                std::cerr << "ERR: TOKEN TYPE NOT COVERED IN PARSER: " << tType_to_string(token.tType) <<
+                " Line number: " << token.debug_lineNum << '\n';
 #endif
                 assert(false);
             }
@@ -973,6 +982,8 @@ public:
             return pState.fsmTerminate(false);
 
         parseExpr(pState);
+
+        ifNode->addChild(ALLOC_AST_NODE(AstNodeTypes::aNEG_MINUS));
 
         ifNode->addChild(ALLOC_AST_NODE(AstNodeTypes::aIF_JUMP));
         ifNode->nChildNodes.back()->setNodeValue(getLabelId());
@@ -1093,9 +1104,8 @@ public:
         {
             pState.fsmCurState = ParseFsmStates::sCLASS_DECIDE;
         }
-        else if (pState.getStackTop()->aType == AstNodeTypes::aFUNCTION)
+        else if (pState.getStackTop()->aType == AstNodeTypes::aSTATEMENTS)
         {
-            // TODO: why never reached?
             pState.fsmCurState = ParseFsmStates::sSTATEMENT_DECIDE;
         }
         // NOTE: allows the same file have different classes
