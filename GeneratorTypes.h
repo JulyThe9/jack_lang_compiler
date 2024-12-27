@@ -32,6 +32,7 @@ std::map<AstNodeTypes, std::string> generationLookup
     {AstNodeTypes::aPTR_1_READ,       "push pointer 1\r\n"},
     {AstNodeTypes::aPTR_1_WRITE,      "pop pointer 1\r\n"},
     {AstNodeTypes::aTHAT_0_READ,      "push that 0\r\n"},
+    {AstNodeTypes::aTHAT_0_WRITE,     "pop that 0\r\n"},
 
     // TODO: support =
     {AstNodeTypes::aPLUS,     "add\r\n"},
@@ -69,7 +70,8 @@ std::map<AstNodeTypes, std::string> generationLookup
     {AstNodeTypes::aFIELD_VAR_WRITE,  "pop this $\r\n"},
     {AstNodeTypes::aSTATIC_VAR_READ,  "push static $\r\n"},
     {AstNodeTypes::aSTATIC_VAR_WRITE, "pop static $\r\n"},
-    {AstNodeTypes::aTEMP_VAR_WRITE,   "pop temp $\r\n"}
+    {AstNodeTypes::aTEMP_VAR_WRITE,   "pop temp $\r\n"},
+    {AstNodeTypes::aTEMP_VAR_READ,    "push temp $\r\n"}
 };
 
 std::string outFileExt = "vm";

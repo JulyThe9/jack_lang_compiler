@@ -711,7 +711,6 @@ public:
             else if (token.tType == TokenTypes::tIDENTIFIER)
             {
                 assert(token.tVal.has_value());
-
                 auto [varScope, varIdx] = pState.findVariable(token.tVal.value());
                 if (varScope != VarScopes::scUNKNOWN)
                 {
@@ -822,6 +821,7 @@ public:
             // array
             else if (token.tType == TokenTypes::tLBR)
             {
+                pState.incArrayEnteryNum();
                 auto *arrayNode = ALLOC_AST_NODE(AstNodeTypes::aARRAY);
                 pState.addStackTop(arrayNode);
 
@@ -859,6 +859,12 @@ public:
                 while (stackTop->aType != AstNodeTypes::aARRAY);
                 assert(stackTop->aType == AstNodeTypes::aARRAY);
                 curTermNode = stackTop;
+                
+                if (pState.getArrayEnteryNum() == 0)
+                {
+                    break;
+                }
+                pState.decArrayEnteryNum();
             }
             else if (token.tType == TokenTypes::tCOMMA)
             {
@@ -871,10 +877,10 @@ public:
             else
             {
                 // some TokenTypes entry hasn't been covered by parser
-                assert(false);
 #ifdef ERR_DEBUG   
                 std::cerr << "ERR: TOKEN TYPE NOT COVERED IN PARSER: " << tType_to_string(token.tType) << '\n';
 #endif
+                assert(false);
             }
 
             pState.advance();
@@ -884,7 +890,7 @@ public:
         assert(stackTop != NULL);
         
         if (curTermNode != NULL)
-            stackTop->addChild(curTermNode);    
+            stackTop->addChildConditional(curTermNode);
 
         // either create isexprconnectornode (for array, func call, etc.)
         // or exclude tSTATEMENTS from isconnectornode
@@ -1162,10 +1168,79 @@ public:
             return pState.fsmTerminate(false);
 
         assert (varToken.tType == TokenTypes::tIDENTIFIER);
+        assert(varToken.tVal.has_value());
         const unsigned int nameID = varToken.tVal.value();
 
+        pState.advance();
+        if (pState.getTokensFinished())
+            return pState.fsmTerminate(false);
+
+        bool assigningArrayElem = false;
+        if (pState.getCurToken().tType == TokenTypes::tLBR)
+        {   
+            assigningArrayElem = true;
+
+            // auto *arrayNode = ALLOC_AST_NODE(AstNodeTypes::aARRAY);
+            // pState.addStackTop(arrayNode);
+            auto *arrayNode = createStackTopNode(pState, AstNodeTypes::aARRAY);
+
+            auto *addressOffsetNode = ALLOC_AST_NODE(AstNodeTypes::aPLUS);
+            addressOffsetNode->nPrecCoeff = pState.getLayer();
+            pState.incLayer();
+
+            // left operand of the PLUS is the array's base address
+            // so we need to recognize the scope of the variable holding it
+            auto [varScope, varIdx] = pState.findVariable(varToken.tVal.value());
+            if (varScope != VarScopes::scUNKNOWN)
+            {
+                const VariableData &varData = pState.getVariableInScope(varScope, varIdx);
+
+                // primitive type, can be used in the expression as is;
+                // need lookahead if we want to do something like obj1 + obj2
+                if (isprimitivevartype(ldType_to_tType(varData.valueType)) || 
+                    isarraytype(ldType_to_tType(varData.valueType)))
+                {
+                    addressOffsetNode->addChild(ALLOC_AST_NODE(varScopeToAccessType(varScope), varIdx));
+                }
+                else
+                {
+                    std::cerr << "ERR: NOT  VARIABLE NAME: " 
+                        << pState.getIdent()->at(varToken.tVal.value()) << '\n';
+                    // TODO: error: not a variable name
+                }
+            }
+            else
+            {
+                std::cerr << "ERR: UNKNOWN VARIABLE NAME: " 
+                    << pState.getIdent()->at(varToken.tVal.value()) << '\n';
+                // TODO: error: unknown variable name
+            }
+
+            // PLUS becomes array node's child
+            arrayNode->addChild(addressOffsetNode);
+            // adding PLUS to stack top (in the end of the day, 
+            // it's an addition binary op, although implicit)
+            pState.addStackTop(addressOffsetNode);
+
+            // special nodes for array code generation using temp 0 - pointer 1 - that 0
+            // semantics from nand2tetris
+            arrayNode->addChild(ALLOC_AST_NODE(AstNodeTypes::aTEMP_VAR_WRITE, 0));
+
+            // advancing to expression start 
+            // (parseExpr checks if no more tokens)
+            pState.advance();
+            // parsing array subscript
+            parseExpr(pState);
+            // resetting the parentheses layer
+            pState.resetLayer();
+            // skipping ] as we have parsed it in parseExpr
+            pState.advance();
+            if (pState.getTokensFinished())
+                return pState.fsmTerminate(false);
+        }
+
         // skipping =
-        pState.advance(2);
+        pState.advance();
         if (pState.getTokensFinished())
             return pState.fsmTerminate(false);
 
@@ -1174,19 +1249,33 @@ public:
         // we need it to be aLET (parent of expr and LOCAL_WRITE/ARG_WRITE/etc.)
         assert(pState.getStackTop()->aType == AstNodeTypes::aLET);
 
-        auto [varScope, idx] = pState.findVariable(nameID);
-        if (varScope != VarScopes::scUNKNOWN)
-        {   
-            const bool isWriting = true;
-            pState.addStackTopChild(ALLOC_AST_NODE(varScopeToAccessType(varScope, isWriting), idx));
+        // array case
+        if (assigningArrayElem)
+        {
+            pState.addStackTopChild(ALLOC_AST_NODE(AstNodeTypes::aTEMP_VAR_READ, 0));
+            pState.addStackTopChild(ALLOC_AST_NODE(AstNodeTypes::aPTR_1_WRITE));
+            pState.addStackTopChild(ALLOC_AST_NODE(AstNodeTypes::aTHAT_0_WRITE));
+            
             // popping aLET node from stack, to go back to aSTATEMENTS
             pState.popStackTop();
-
             pState.advance();
             pState.fsmCurState = ParseFsmStates::sSTATEMENT_DECIDE;
             return true;
         }
 
+        // not an array case
+        auto [varScope, idx] = pState.findVariable(nameID);
+        if (varScope != VarScopes::scUNKNOWN)
+        {   
+            const bool isWriting = true;
+            pState.addStackTopChild(ALLOC_AST_NODE(varScopeToAccessType(varScope, isWriting), idx));
+           
+            // popping aLET node from stack, to go back to aSTATEMENTS
+            pState.popStackTop();
+            pState.advance();
+            pState.fsmCurState = ParseFsmStates::sSTATEMENT_DECIDE;
+            return true;
+        }
         // NOTE: cannot be a class obj name, because class members
         // are only set through setters
         std::cerr << "ERR: UNKNOWN VARIABLE NAME: " << pState.getIdent()->at(nameID) << '\n';

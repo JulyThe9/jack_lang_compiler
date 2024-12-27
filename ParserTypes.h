@@ -84,6 +84,7 @@ enum class AstNodeTypes : unsigned int
     // array manipulation
     aPTR_1_WRITE,
     aTHAT_0_READ,
+    aTHAT_0_WRITE,
 
     // function-related
     // def
@@ -169,6 +170,7 @@ std::map<AstNodeTypes, std::string> aTypes_to_strings
     {AstNodeTypes::aPTR_1_READ, "PTR_1_READ"},
     {AstNodeTypes::aPTR_1_WRITE, "PTR_1_WRITE"},
     {AstNodeTypes::aTHAT_0_READ, "THAT_0_READ"},
+    {AstNodeTypes::aTHAT_0_WRITE, "THAT_0_WRITE"},
     {AstNodeTypes::aFUNC_DEF, "FUNC_DEF"},
     {AstNodeTypes::aFUNC_LOCNUM, "FUNC_LOCNUM"},
     {AstNodeTypes::aFUNC_RET_VAL, "FUNC_RET_VAL"},
@@ -568,6 +570,7 @@ private:
     bool tokensFinished = false;
     ClassData *curParseClass = NULL;
     int layerCoeff = 0;
+    int arrayEnteryNum = 0;
 
 public:
     bool fsmFinished = false;
@@ -769,6 +772,7 @@ public:
         tokensFinished = false;
         curParseClass = NULL;
         layerCoeff = 0;
+        arrayEnteryNum = 0;
         fsmFinished = false;
         fsmFinishedCorrectly = true;
         fsmCurState = ParseFsmStates::sINIT;
@@ -790,6 +794,10 @@ public:
     void decLayer() {layerCoeff-=LAYER_DECR;}
     void resetLayer() {layerCoeff = 0;}
     void restoreLayer(int storedLayer) { layerCoeff = storedLayer; }
+
+    int getArrayEnteryNum() {return arrayEnteryNum;}
+    void incArrayEnteryNum() {arrayEnteryNum++;}
+    void decArrayEnteryNum() {arrayEnteryNum--;}
 
     void addStackTopChild(AstNode *child)
     {
