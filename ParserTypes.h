@@ -495,8 +495,8 @@ AstNode *getIfBlockJump(AstNode *ifNodeDesc)
     if (!parent)
         return NULL;
 
-    assert(parent->nChildNodes.size() >= 3);
-    auto *ifJumpNode = parent->nChildNodes[1];
+    assert(parent->nChildNodes.size() >= 4);
+    auto *ifJumpNode = parent->nChildNodes[2];
     assert(ifJumpNode->aType == AstNodeTypes::aIF_JUMP);
 
     return ifJumpNode;
