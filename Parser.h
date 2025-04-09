@@ -158,14 +158,27 @@ private:
     }
 
 public:
-    void loadSysLibSymbols(unsigned int arrayLib_className_id, unsigned int newName_id)
+    void loadSysLibSymbols(unsigned int className_id, unsigned int funcName_id, 
+        bool isMethod, bool isCtor, bool arrayClassAdding = false)
     {
-        pState.arrayLib_classID = pState.addClass(arrayLib_className_id, false);
+        unsigned int classID = 0;    
+        auto [classExists, idx] = pState.containsClass(className_id);
+        if (classExists)
+        {
+            classID = idx;               
+        }
+        else
+        {
+            classID = pState.addClass(className_id, false);
+        }
+
+        if (arrayClassAdding)
+        {
+            pState.arrayLib_classID = classID;
+        }
         // see ctorDefStateBeh for details
-        const bool isMethod = false;
-        const bool isCtor = true;
-        pState.addFuncToClass(pState.arrayLib_classID, newName_id, 
-            classID_to_ldType(pState.arrayLib_classID), 
+        pState.addFuncToClass(classID, funcName_id, 
+            (arrayClassAdding ? classID_to_ldType(classID) : LangDataTypes::ldVOID), 
             isMethod, isCtor);
     }
 
@@ -506,28 +519,10 @@ public:
         assert (funcToken.tType == TokenTypes::tIDENTIFIER);
         assert (funcToken.tVal.has_value());
 
-        // legowelt TODO: -1 until we implement finding calling on objs/classes in here
-        int TEMP_classID = -1;
-        auto [contains, funcID] = pState.findFunction(funcToken.tVal.value(), TEMP_classID);
-
-        if (contains)
-        {
-            if (pState.getFuncByIDFromClass(funcID, TEMP_classID).isMethod)
-            {
-                pState.addStackTopChild(ALLOC_AST_NODE(AstNodeTypes::aPTR_0_READ));
-            }
-        }
-        else
-        {
-            // TODO: error: UNKNOWN IDENTIFIER
-        #ifdef ERR_DEBUG
-            std::cerr << "ERR: UNKNOWN IDENTIFIER: " << pState.getIdent()->at(funcToken.tVal.value()) << '\n';
-        #endif
-        }
-
-        // legowelt TODO: checking that function exists in curParseClass or class of obj it's called on
-        auto [res, funcCallRoot] = parseFuncCallArgs(pState, TEMP_classID);
-        pState.popStackTop();
+        AstNode* funcRootNode;
+        const bool allowVariable = false;
+        processIdentifier(funcToken, funcRootNode, allowVariable);
+        pState.addStackTopChild(funcRootNode);
 
         if (pState.getCurToken().tType != TokenTypes::tRPR)
         {
@@ -546,7 +541,8 @@ public:
         stackTop->addChild(ALLOC_AST_NODE(AstNodeTypes::aTEMP_VAR_WRITE, 0));
         pState.advance();
         pState.fsmCurState = ParseFsmStates::sSTATEMENT_DECIDE;
-        return res;
+        
+        return true;
     }
 
     std::tuple<bool, AstNode*> parseFuncCallArgs(parserState &pState, int classID = -1)
@@ -595,104 +591,202 @@ public:
         return {true, stackTop};
     }
 
-    AstNode *parseExpr(parserState &pState)
-    {   
-        struct FuncMethodData
+    struct FuncMethodData
+    {
+        bool expectFunc;
+        bool expectMethod;
+        // scope of the variable which is
+        // the object that we call a method on
+        AstNodeTypes varAccessType;
+        // its idx in the container for the
+        // corresponding scope
+        unsigned int varIdx;
+
+        FuncMethodData(bool expectFunc, bool expectMethod)
+            : expectFunc(expectFunc), expectMethod(expectMethod), 
+                varAccessType(AstNodeTypes::aUNKNOWN), varIdx(0)
+        {}
+        FuncMethodData(bool expectFunc, bool expectMethod, AstNodeTypes varAccessType, unsigned int varIdx)
+            : expectFunc(expectFunc), expectMethod(expectMethod), varAccessType(varAccessType), varIdx(varIdx)
+        {}
+    };
+
+    std::tuple<bool, AstNode*> handleFuncNodes(TokenData &token, FuncMethodData &funcMethodData, int classID = -1)
+    {
+        // legowelt TODO: makes sense to have checkcreateFunction instead of findFunction
+        auto [contains, funcID] = pState.findFunction(token.tVal.value(), classID);
+        if (contains)
         {
-            bool expectFunc;
-            bool expectMethod;
-            // scope of the variable which is
-            // the object that we call a method on
-            AstNodeTypes varAccessType;
-            // its idx in the container for the
-            // corresponding scope
-            unsigned int varIdx;
+            pState.addStackTop(ALLOC_AST_NODE(AstNodeTypes::aDO));
 
-            FuncMethodData(bool expectFunc, bool expectMethod)
-                : expectFunc(expectFunc), expectMethod(expectMethod), 
-                    varAccessType(AstNodeTypes::aUNKNOWN), varIdx(0)
-            {}
-            FuncMethodData(bool expectFunc, bool expectMethod, AstNodeTypes varAccessType, unsigned int varIdx)
-                : expectFunc(expectFunc), expectMethod(expectMethod), varAccessType(varAccessType), varIdx(varIdx)
-            {}
-        };
+            if (pState.getFuncByIDFromClass(funcID, classID).isMethod)
+            {
+                // pusing the address of the object on which the method is called
+                /*
+                e.g.
+                var NiceHello nh;
+                let nh = NiceHello.new(25,100);
+                return nh.nhelloFunc(700);
+                In this case, we do push local 0 
+                for pushing nh as the first argument of nhelloFunc
+                */
+                pState.addStackTopChild(ALLOC_AST_NODE(funcMethodData.varAccessType, 
+                    funcMethodData.varIdx));
+            }
 
-        AstNode *curTermNode = NULL;
-        auto handleFuncNodes = [&](TokenData &token, FuncMethodData &funcMethodData, int classID = -1)
+            const int curLayer = pState.getLayer();
+            pState.resetLayer();
+            auto [res, funcCallRoot] = parseFuncCallArgs(pState, classID);
+            //curTermNode = funcCallRoot;
+            pState.restoreLayer(curLayer);
+            pState.popStackTop();
+            return {true, funcCallRoot};
+        }
+        return {false, NULL};
+    };
+
+    bool parseFuncCall(int classID, FuncMethodData &funcMethodData, AstNode *&resNode)
+    {
+        auto *token = &(pState.advanceAndGet());
+        bool continueParsing = true;
+        if (pState.getTokensFinished())
         {
-            // legowelt TODO: makes sense to have checkcreateFunction instead of findFunction
-            auto [contains, funcID] = pState.findFunction(token.tVal.value(), classID);
-            if (contains)
-            {
-                pState.addStackTop(ALLOC_AST_NODE(AstNodeTypes::aDO));
-
-                if (pState.getFuncByIDFromClass(funcID, classID).isMethod)
-                {
-                    // pusing the address of the object on which the method is called
-                    /*
-                    e.g.
-                    var NiceHello nh;
-                    let nh = NiceHello.new(25,100);
-                    return nh.nhelloFunc(700);
-                    In this case, we do push local 0 
-                    for pushing nh as the first argument of nhelloFunc
-                    */
-                    pState.addStackTopChild(ALLOC_AST_NODE(funcMethodData.varAccessType, 
-                        funcMethodData.varIdx));
-                }
-
-                const int curLayer = pState.getLayer();
-                pState.resetLayer();
-                auto [res, funcCallRoot] = parseFuncCallArgs(pState, classID);
-                curTermNode = funcCallRoot;
-                pState.restoreLayer(curLayer);
-                pState.popStackTop();
-            }
-            return contains;
-        };
-
-        auto parseFuncCall = [&](int classID, FuncMethodData &funcMethodData)
+            pState.fsmTerminate(false);
+            continueParsing = false;
+        }
+        if (token->tType != TokenTypes::tACCESS)
         {
-            auto *token = &(pState.advanceAndGet());
-            bool continueParsing = true;
-            if (pState.getTokensFinished())
+            pState.fsmTerminate(false);
+            continueParsing = false;
+        }
+        token = &(pState.advanceAndGet());
+        if (pState.getTokensFinished())
+        {
+            pState.fsmTerminate(false);
+            continueParsing = false;
+        }
+        if (token->tType == TokenTypes::tIDENTIFIER)
+        {
+            auto [success, funcCallRoot] = handleFuncNodes(*token, funcMethodData, classID);
+            if (!success)
             {
-                pState.fsmTerminate(false);
-                continueParsing = false;
-            }
-            if (token->tType != TokenTypes::tACCESS)
-            {
-                pState.fsmTerminate(false);
-                continueParsing = false;
-            }
-            token = &(pState.advanceAndGet());
-            if (pState.getTokensFinished())
-            {
-                pState.fsmTerminate(false);
-                continueParsing = false;
-            }
-            if (token->tType == TokenTypes::tIDENTIFIER)
-            {
-                if (!handleFuncNodes(*token, funcMethodData, classID))
-                {
-                    // TODO: error: UNKNOWN IDENTIFIER
-                #ifdef ERR_DEBUG
-                    std::cerr << "ERR: UNKNOWN IDENTIFIER: " << pState.getIdent()->at(token->tVal.value()) << '\n';
-                #endif
-                }
-
-                continueParsing = true;
+                // TODO: error: UNKNOWN IDENTIFIER
+            #ifdef ERR_DEBUG
+                std::cerr << "ERR: UNKNOWN 2 IDENTIFIER: " << pState.getIdent()->at(token->tVal.value()) << '\n';
+            #endif
             }
             else
             {
-            #ifdef ERR_DEBUG
-                std::cerr << "ERR: EXPECTED IDENTIFIER, BUT FOUND: " << tType_to_string(token->tType) << '\n';
-            #endif
-                continueParsing = true;
+                resNode = funcCallRoot;
             }
-            return continueParsing;
-        };
 
+            continueParsing = true;
+        }
+        else
+        {
+        #ifdef ERR_DEBUG
+            std::cerr << "ERR: EXPECTED IDENTIFIER, BUT FOUND: " << tType_to_string(token->tType) << '\n';
+        #endif
+            continueParsing = true;
+        }
+        return continueParsing;
+    };
+
+    // reference to pointer variable, because we need to change whatever pointer var
+    // we provide as an argument (think C-style multiple returns)
+    bool processIdentifier(TokenData &identToken, AstNode *&resNode, bool allowVariable = true)
+    {
+        auto [varScope, varIdx] = pState.findVariable(identToken.tVal.value());
+        if (varScope != VarScopes::scUNKNOWN)
+        {
+            const VariableData &varData = pState.getVariableInScope(varScope, varIdx);
+
+            // primitive type, can be used in the expression as is;
+            // need lookahead if we want to do something like obj1 + obj2
+            if (isprimitivevartype(ldType_to_tType(varData.valueType)) || 
+                isarraytype(ldType_to_tType(varData.valueType)))
+            {   
+                if (!allowVariable)
+                {
+#ifdef ERR_DEBUG
+                    std::cerr << "ERR: VARIABLE NOT ALLOWED HERE, line number: " << 
+                        ", line number: " << identToken.debug_lineNum << '\n';
+#endif
+                    // TODO: error: variable not allowed here
+                    return false;
+                }
+                resNode = ALLOC_AST_NODE(varScopeToAccessType(varScope), varIdx);
+                return true;
+            }
+            else
+            {
+                // do not expect function, but expect method,
+                // we are calling on object of class
+                FuncMethodData funcMethodData(false, true, varScopeToAccessType(varScope), varIdx);
+                if (!parseFuncCall(ldType_to_classID(varData.valueType), funcMethodData, resNode))
+                    return false;
+
+                return true;
+            }
+        }
+        else
+        {
+            // internal if, because we need to record containsClass res
+            // cannot use checkCreateUserDefinedDataType right away
+            // because identifier can be function or method of current class
+            auto [classExists, classID] = pState.containsClass(identToken.tVal.value());
+            if (classExists)
+            {   
+                // expect function but not method,
+                // we are calling on class
+                FuncMethodData funcMethodData(true, false);
+                if (!parseFuncCall(classID, funcMethodData, resNode))
+                    return false;
+
+                return true;
+            }
+            else 
+            {   
+                auto [success, nextToken] = pState.lookAheadGet();
+                // if access, then current *unknown* identifier is a name of the class
+                // that has't been defined yet, so can use checkCreateUserDefinedDataType
+                if (nextToken.tType == TokenTypes::tACCESS)
+                {
+                    LangDataTypes ldType = pState.checkCreateUserDefinedDataType(identToken);
+                    // same semantics as in classExists case
+                    FuncMethodData funcMethodData(true, false);
+                    if (!parseFuncCall(ldType_to_classID(ldType), funcMethodData, resNode))
+                        return false;
+
+                    return true;
+                }
+                // if not access, then current *unknown* identifier must be a name of
+                // function or method in the current class
+                else
+                {
+                    // can be both a method and a function (called in current class, so
+                    // can't derive this info beforehand like in cases above)
+                    FuncMethodData funcMethodData(true, true, AstNodeTypes::aPTR_0_READ, 0);
+                    auto [success, funcCallRoot] = handleFuncNodes(identToken, funcMethodData);
+                    // don't overwrite if not null
+                    resNode = funcCallRoot != NULL ? funcCallRoot : resNode;
+                    if (!success)
+                    {
+                #ifdef ERR_DEBUG
+                    std::cerr << "ERR: UNKNOWN 3 IDENTIFIER: " << pState.getIdent()->at(identToken.tVal.value()) << '\n';
+                #endif
+                    }
+
+                    return true;
+                }
+            }
+        }
+    }
+
+    AstNode *parseExpr(parserState &pState)
+    {   
+        AstNode *curTermNode = NULL;
+        
         // checking if expr is finished
         while (true)
         {   
@@ -713,59 +807,19 @@ public:
                 // expect function but not method,
                 // we are calling on class (Array)
                 FuncMethodData funcMethodData(true, false);
-                if (!parseFuncCall(pState.arrayLib_classID, funcMethodData))
+                if (!parseFuncCall(pState.arrayLib_classID, funcMethodData, curTermNode))
                     return NULL;
             }
             else if (token.tType == TokenTypes::tIDENTIFIER)
             {
                 assert(token.tVal.has_value());
-                auto [varScope, varIdx] = pState.findVariable(token.tVal.value());
-                if (varScope != VarScopes::scUNKNOWN)
-                {
-                    const VariableData &varData = pState.getVariableInScope(varScope, varIdx);
 
-                    // primitive type, can be used in the expression as is;
-                    // need lookahead if we want to do something like obj1 + obj2
-                    if (isprimitivevartype(ldType_to_tType(varData.valueType)) || 
-                        isarraytype(ldType_to_tType(varData.valueType)))
-                    {
-                        curTermNode = ALLOC_AST_NODE(varScopeToAccessType(varScope), varIdx);
-                    }
-                    else
-                    {
-                        // do not expect function, but expect method,
-                        // we are calling on object of class
-                        FuncMethodData funcMethodData(false, true, varScopeToAccessType(varScope), varIdx);
-                        if (!parseFuncCall(ldType_to_classID(varData.valueType), funcMethodData))
-                            return NULL;
-                    }
-                }
-                else
+                AstNode *resNode = nullptr;
+                if (!processIdentifier(token, resNode))
                 {
-                    // internal if, because we need to record containsClass res
-                    // legowelt TODO: use checkCreateUserDefinedDataType over containsClass
-                    auto [classExists, classID] = pState.containsClass(token.tVal.value());
-                    if (classExists)
-                    {   
-                        // expect function but not method,
-                        // we are calling on class
-                        FuncMethodData funcMethodData(true, false, varScopeToAccessType(varScope), varIdx);
-                        if (!parseFuncCall(classID, funcMethodData))
-                            return NULL;
-                    }
-                    else 
-                    {   
-                        // can be both a method and a function (called in current class, so
-                        // can't derive this info beforehand like in cases above)
-                        FuncMethodData funcMethodData(true, true, AstNodeTypes::aPTR_0_READ, 0);
-                        if (!handleFuncNodes(token, funcMethodData))
-                        {
-                    #ifdef ERR_DEBUG
-                        std::cerr << "ERR: UNKNOWN IDENTIFIER: " << pState.getIdent()->at(token.tVal.value()) << '\n';
-                    #endif
-                        }
-                    }
+                    return NULL;
                 }
+                curTermNode = resNode;
             }
             else if (isexprkeyword(token.tType))
             {
@@ -887,7 +941,7 @@ public:
                 // some TokenTypes entry hasn't been covered by parser
 #ifdef ERR_DEBUG   
                 std::cerr << "ERR: TOKEN TYPE NOT COVERED IN PARSER: " << tType_to_string(token.tType) <<
-                " Line number: " << token.debug_lineNum << '\n';
+                ", line number: " << token.debug_lineNum << '\n';
 #endif
                 assert(false);
             }

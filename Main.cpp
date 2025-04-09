@@ -38,12 +38,14 @@ private:
 
 public:
 
-    static std::tuple<unsigned int, unsigned int, unsigned int> loadSysLibIdents(lexerState &lexState)
+    static void loadSysLibIdents(lexerState &lexState)
     {
         lexState.identifiers.push_back("Array");
         lexState.identifiers.push_back("new");
         lexState.identifiers.push_back("this");
-        return {0,1,2};
+        lexState.identifiers.push_back("Screen");
+        lexState.identifiers.push_back("setColor");
+        lexState.identifiers.push_back("drawRectangle");
     }
 
     bool init(const char *path)
@@ -556,12 +558,22 @@ bool compilerCtrl(const char *pathIn, const char *pathOut)
 {
     Lexer lexer;
     lexerState lexState;
-    auto [arrayLib_className_id, newName_id, thisName_id] = Lexer::loadSysLibIdents(lexState);
+    Lexer::loadSysLibIdents(lexState);
+
+    unsigned arrayLib_className_id = 0;
+    unsigned newName_id = 1;
+    unsigned thisName_id = 2;
+    unsigned screenLib_className_id = 3;
+    unsigned setColorName_id = 4;
+    unsigned drawRectangleName_id = 5;
 
     Parser parser;
     parser.thisNameID = thisName_id;
     // TODO: the whole loading is temp solution
-    parser.loadSysLibSymbols(arrayLib_className_id, newName_id);
+    parser.loadSysLibSymbols(arrayLib_className_id, newName_id, false, true, true);
+
+    parser.loadSysLibSymbols(screenLib_className_id, setColorName_id, false, false);
+    parser.loadSysLibSymbols(screenLib_className_id, drawRectangleName_id, false, false);
 
     if (!lexer.init(pathIn))
     {

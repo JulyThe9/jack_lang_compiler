@@ -112,7 +112,7 @@ enum class AstNodeTypes : unsigned int
     aUNKNOWN
 };
 
-#ifdef DEBUG
+#if defined(DEBUG) || defined(PARSER_DEBUG)
 std::map<AstNodeTypes, std::string> aTypes_to_strings
 {
     {AstNodeTypes::aCLASS, "CLASS"},
@@ -346,7 +346,6 @@ private:
     // moved to private to not mess with pointer
     AstNode *parentNode = NULL;
 public:
-    // any extra fields?
     explicit AstNode(TokenData &token) : DebugData(token.debug_lineNum), 
         aType(tType_to_aType(token.tType)), nID(assignId()), 
         generatesCode(checkGeneratesCode(aType))
@@ -431,6 +430,11 @@ public:
     }
     void addChild(AstNode *child)
     {
+#if defined(PARSER_DEBUG)
+        print();
+        std::cerr << "AST NODE ID: " << nID << 
+                        ", line number: " << debug_lineNum << '\n';       
+#endif
         assert(child != NULL);
         nChildNodes.push_back(child);
         nChildNodes.back()->setParent(this);
@@ -459,7 +463,7 @@ private:
 public:
 
 
-#ifdef DEBUG
+#if defined(DEBUG) || defined(PARSER_DEBUG)
     void print()
     {
         std::cout << "AstNode #" << nID << '\n';
@@ -876,7 +880,8 @@ public:
         if (contains)
             return {VarScopes::scSTATIC, idx};
 
-        // might be a function or Class(?) name
+        // might be a function or class name,
+        // this scenario taken care of in the caller
         return {VarScopes::scUNKNOWN, 0};
     }
 
@@ -942,6 +947,15 @@ public:
         advance(step);
         return getCurToken();
     }
+
+    std::tuple<bool, TokenData&> lookAheadGet()
+    {
+        if (curTokenId + 1 >= tokens->size())
+            return {false, tokens->at(0)};
+
+        return {true, tokens->at(curTokenId + 1)};
+    }
+
     bool getTokensFinished() const
     {
         return tokensFinished;

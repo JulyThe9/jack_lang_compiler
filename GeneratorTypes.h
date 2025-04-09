@@ -28,7 +28,7 @@ std::map<AstNodeTypes, std::string> generationLookup
     {AstNodeTypes::aARG_VAR_WRITE,   "pop argument $\r\n"},
     
     {AstNodeTypes::aPTR_0_READ,       "push pointer 0\r\n"},
-    {AstNodeTypes::aPTR_0_WRITE,      "pop pointer 0\r\n"}, // ever used?
+    {AstNodeTypes::aPTR_0_WRITE,      "pop pointer 0\r\n"},
     {AstNodeTypes::aPTR_1_READ,       "push pointer 1\r\n"},
     {AstNodeTypes::aPTR_1_WRITE,      "pop pointer 1\r\n"},
     {AstNodeTypes::aTHAT_0_READ,      "push that 0\r\n"},
@@ -36,7 +36,6 @@ std::map<AstNodeTypes, std::string> generationLookup
 
     {AstNodeTypes::aEQUAL,    "eq\r\n"},
     {AstNodeTypes::aPLUS,     "add\r\n"},
-    // TODO: implement neg
     {AstNodeTypes::aMINUS,    "sub\r\n"},
     {AstNodeTypes::aMULT,     "call Math.multiply 2\r\n"},
     {AstNodeTypes::aDIV,      "call Math.divide 2\r\n"},
@@ -50,7 +49,6 @@ std::map<AstNodeTypes, std::string> generationLookup
     // function-related
     {AstNodeTypes::aFUNC_DEF,       "function $ "},
     {AstNodeTypes::aFUNC_LOCNUM,    "$\r\n"},
-
 
     {AstNodeTypes::aFUNC_CALL,    "call $ "},
     {AstNodeTypes::aFUNC_ARGNUM,  "$\r\n"},

@@ -2,12 +2,13 @@
 #define _DEBUG_CONTROL_
 
 
-#define DEBUG 1
-#define ERR_DEBUG 1
-#define LEXER_DEBUG_m 1
-#define MISC_DEBUG_m 1
+#define DEBUG
+#define ERR_DEBUG
+#define LEXER_DEBUG_m
+#define PARSER_DEBUG_m
+#define MISC_DEBUG_m
 
-#define LEXER_ONLY_m 1
+#define LEXER_ONLY_m
 
 #endif
 
