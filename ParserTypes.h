@@ -174,7 +174,7 @@ std::map<AstNodeTypes, std::string> aTypes_to_strings
     {AstNodeTypes::aFUNC_DEF, "FUNC_DEF"},
     {AstNodeTypes::aFUNC_LOCNUM, "FUNC_LOCNUM"},
     {AstNodeTypes::aFUNC_RET_VAL, "FUNC_RET_VAL"},
-    {AstNodeTypes::aFUNC_ARGNUM, "aFUNC_ARGNUM"},
+    {AstNodeTypes::aFUNC_ARGNUM, "FUNC_ARGNUM"},
     {AstNodeTypes::aFUNC_CALL, "FUNC_CALL"},
     {AstNodeTypes::aCTOR_ALLOC, "CTOR_ALLOC"},
     {AstNodeTypes::aFIELD_VAR_READ,  "FIELD_VAR_READ"},
