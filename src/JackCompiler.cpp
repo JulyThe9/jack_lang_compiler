@@ -13,7 +13,7 @@
 #include "Parser.h"
 #include "Generator.h"
 #include "DEBUG_CONTROL.h"
-#include "/home/synthwave09/dev/nand2tetris/projects/06/UsefulString.h"
+#include "UsefulString.h"
 
 namespace fs = std::filesystem;
 
