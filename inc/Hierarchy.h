@@ -2,6 +2,8 @@
 #define _HIERARCHY_
 #include <stack>
 #include <vector>
+#include <algorithm>
+#include <cassert>
 
 enum class ScopeTypes : unsigned int
 {
@@ -307,6 +309,7 @@ public:
     }
 
 };
-std::vector<VariableData> ClassData::staticVars;
+
+inline std::vector<VariableData> ClassData::staticVars;
 
 #endif

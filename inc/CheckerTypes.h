@@ -1,4 +1,8 @@
+#ifndef _CHECKER_TYPES_
+#define _CHECKER_TYPES_
+
 #include <map>
+#include "LexerTypes.h"
 #include "DEBUG_CONTROL.h"
 #define LD_CLASS_OFFSET 50
 
@@ -14,16 +18,16 @@ enum class LangDataTypes : unsigned int
     ldCLASS = LD_CLASS_OFFSET,
 };
 
-LangDataTypes classID_to_ldType(unsigned int classID)
+inline LangDataTypes classID_to_ldType(unsigned int classID)
 {
     return (LangDataTypes)(classID + (unsigned int)LangDataTypes::ldCLASS);
 }
-unsigned int ldType_to_classID(LangDataTypes ldType)
+inline unsigned int ldType_to_classID(LangDataTypes ldType)
 {
     return (unsigned int)(ldType) - (unsigned int)(LangDataTypes::ldCLASS);
 }
 
-std::map<TokenTypes, LangDataTypes> tTypes_to_ldTypes
+inline std::map<TokenTypes, LangDataTypes> tTypes_to_ldTypes
 {
     {TokenTypes::tINT, LangDataTypes::ldINT},
     {TokenTypes::tBOOLEAN, LangDataTypes::ldBOOLEAN},
@@ -34,7 +38,8 @@ std::map<TokenTypes, LangDataTypes> tTypes_to_ldTypes
     // special
     {TokenTypes::tIDENTIFIER, LangDataTypes::ldCLASS}
 };
-LangDataTypes tType_to_ldType(TokenTypes tType)
+
+inline LangDataTypes tType_to_ldType(TokenTypes tType)
 {
     std::map<TokenTypes, LangDataTypes>::iterator iter;
     iter = tTypes_to_ldTypes.find(tType);
@@ -45,7 +50,7 @@ LangDataTypes tType_to_ldType(TokenTypes tType)
     return LangDataTypes::ldUNKNOWN;
 }
 
-std::map<LangDataTypes, TokenTypes> ldTypes_to_tTypes
+inline std::map<LangDataTypes, TokenTypes> ldTypes_to_tTypes
 {
     {LangDataTypes::ldINT, TokenTypes::tINT},
     {LangDataTypes::ldBOOLEAN, TokenTypes::tBOOLEAN},
@@ -57,7 +62,7 @@ std::map<LangDataTypes, TokenTypes> ldTypes_to_tTypes
     {LangDataTypes::ldCLASS, TokenTypes::tIDENTIFIER}
 };
 
-TokenTypes ldType_to_tType(LangDataTypes ldType)
+inline TokenTypes ldType_to_tType(LangDataTypes ldType)
 {
     std::map<LangDataTypes, TokenTypes>::iterator iter;
     iter = ldTypes_to_tTypes.find(ldType);
@@ -68,3 +73,4 @@ TokenTypes ldType_to_tType(LangDataTypes ldType)
     return TokenTypes::tUNKNOWN_SYMBOL;
 }
 
+#endif

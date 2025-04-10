@@ -1,3 +1,6 @@
+#ifndef _GENERATOR_TYPES_
+#define _GENERATOR_TYPES_
+
 #include "DEBUG_CONTROL.h"
 
 typedef std::string sourceFileNameType;
@@ -5,7 +8,7 @@ typedef std::map<AstNodeTypes, std::string>::iterator genMapIter;
 
 // TODO: validation: if node generates code but its type not found in
 // generationLookup, then we made a mistake somewhere
-std::map<AstNodeTypes, std::string> generationLookup
+inline std::map<AstNodeTypes, std::string> generationLookup
 {
     {AstNodeTypes::aWHILE_START,    "label while_start_lbl_$\r\n"},
     {AstNodeTypes::aWHILE_JUMP,     "if-goto while_end_lbl_$\r\n"},
@@ -72,4 +75,6 @@ std::map<AstNodeTypes, std::string> generationLookup
     {AstNodeTypes::aTEMP_VAR_READ,    "push temp $\r\n"}
 };
 
-std::string outFileExt = "vm";
+inline std::string outFileExt = "vm";
+
+#endif

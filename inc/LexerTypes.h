@@ -1,3 +1,10 @@
+#ifndef _LEXER_TYPES_
+#define _LEXER_TYPES_
+
+#include <cassert>
+#include <vector>
+
+#include "JackCompilerTypes.h"
 #include "DEBUG_CONTROL.h"
 
 enum class LexFsmStates : unsigned int
@@ -11,19 +18,20 @@ enum class LexFsmStates : unsigned int
     sMLINE_COMMENT
 };
 
-struct lexerState
+class LexerState
 {
+public:
+    tokensVect tokens;
+    identifierVect identifiers;
+
     bool fsmFinished = false;
     LexFsmStates fsmCurState = LexFsmStates::sINIT;
-
     bool commentOpen = false;
     bool mlineComment = false;
     char buffer[20];
     uint8_t bIdx = 0;
-
     int lexedLineIdx = 0;
-    tokensVect tokens;
-    identifierVect identifiers;
+    
     // Whether the last oper or term token
     // is operator, false -> term.
     // Starting at true for when the expr
@@ -31,61 +39,29 @@ struct lexerState
     bool lastOperTermIsOper = true;
     bool onRhs = false;
 
-    void flush()
-    {
-        buffer[0] = '\0';
-        bIdx = 0;
-    }
-    bool addBuff(char c)
-    {
-        if (bIdx >= 20)
-            return false;
-        buffer[bIdx++] = c;
-        return true;
-    }
-
-    bool buffEmpty()
-    {
-        return buffer[0] == '\0' || bIdx == 0;
-    }
-
-    void reset()
-    {
-        flush();
-        fsmFinished = false;
-        if (commentOpen)
-        {
-            if (mlineComment)
-            {
-                fsmCurState = LexFsmStates::sMLINE_COMMENT;
-                return;
-            }
-            else
-               commentOpen = false;
-        }
-        fsmCurState = LexFsmStates::sINIT;
-        lastOperTermIsOper = true;
-        onRhs = false;
-    }
+    void flush();
+    bool addBuff(char c);
+    bool buffEmpty();
+    void reset();
 };
 
 struct DebugData
 {  
     int debug_lineNum;
-    DebugData(int debug_lineNum) : debug_lineNum(debug_lineNum)
+    inline DebugData(int debug_lineNum) : debug_lineNum(debug_lineNum)
     {}
     virtual ~DebugData() = 0;
 };
-DebugData::~DebugData() {}
+inline DebugData::~DebugData() {}
 
 struct TokenData : DebugData
 {
     TokenTypes tType;
     std::optional<int> tVal;
 
-    TokenData(int debug_lineNum, TokenTypes tType) : DebugData(debug_lineNum), tType(tType)
+    inline TokenData(int debug_lineNum, TokenTypes tType) : DebugData(debug_lineNum), tType(tType)
     {}
-    TokenData(int debug_lineNum, TokenTypes tType, int tVal) : DebugData(debug_lineNum),
+    inline TokenData(int debug_lineNum, TokenTypes tType, int tVal) : DebugData(debug_lineNum),
         tType(tType), tVal(std::make_optional(tVal))
     {}
 };
@@ -149,7 +125,7 @@ enum class TokenTypes : unsigned int
 };
 
 #if defined(LEXER_DEBUG) || defined(ERR_DEBUG)
-std::map<TokenTypes, std::string> tTypes_to_strings 
+inline std::map<TokenTypes, std::string> tTypes_to_strings 
 {
     {TokenTypes::tCLASS, "CLASS"},
     {TokenTypes::tCONSTRUCTOR, "CONSTRUCTOR"},
@@ -198,7 +174,7 @@ std::map<TokenTypes, std::string> tTypes_to_strings
     {TokenTypes::tNUMBER, "NUMBER"},
     {TokenTypes::tUNKNOWN_SYMBOL, "UNKNOWN_SYMBOL"}
 };
-const std::string &tType_to_string(TokenTypes tType)
+inline const std::string &tType_to_string(TokenTypes tType)
 {
     auto iter = tTypes_to_strings.find(tType);
     if (iter != tTypes_to_strings.end())
@@ -211,7 +187,7 @@ const std::string &tType_to_string(TokenTypes tType)
 }
 #endif
 
-std::map<std::string, TokenTypes> tokenLookup
+inline std::map<std::string, TokenTypes> tokenLookup
 {
     {"class", TokenTypes::tCLASS},
     {"constructor", TokenTypes::tCONSTRUCTOR},
@@ -275,11 +251,11 @@ std::map<std::string, TokenTypes> tokenLookup
 #endif
 };
 
-bool isbinaryperator(TokenTypes tType)
+inline bool isbinaryperator(TokenTypes tType)
 {
     return tType >= TokenTypes::tEQUAL && tType <= TokenTypes::tGT;
 }
-bool isoperator(TokenTypes tType)
+inline bool isoperator(TokenTypes tType)
 {
     return isbinaryperator(tType) || tType== TokenTypes::tNEG_MINUS;
 }
@@ -287,7 +263,7 @@ bool isoperator(TokenTypes tType)
 // tType is meta-language (C++) type VS.
 // the value of it corresponds to object language (Jack) type
 
-bool isprimitivevartype(TokenTypes tType)
+inline bool isprimitivevartype(TokenTypes tType)
 {
     return tType == TokenTypes::tINT    ||
         tType == TokenTypes::tBOOLEAN   ||
@@ -295,19 +271,19 @@ bool isprimitivevartype(TokenTypes tType)
         tType == TokenTypes::tVOID;
 }
 
-bool isarraytype(TokenTypes tType)
+inline bool isarraytype(TokenTypes tType)
 {
     return tType == TokenTypes::tARRAY;
 }
 
-bool isvartype(TokenTypes tType)
+inline bool isvartype(TokenTypes tType)
 {
     return isprimitivevartype(tType) ||
         isarraytype(tType) ||
         tType == TokenTypes::tIDENTIFIER;
 }
 
-bool isexprkeyword(TokenTypes tType)
+inline bool isexprkeyword(TokenTypes tType)
 {
     return tType == TokenTypes::tTHIS ||
         tType == TokenTypes::tTHAT ||
@@ -317,8 +293,8 @@ bool isexprkeyword(TokenTypes tType)
 }
 
 #ifdef DEBUG
-std::string emptyStr("");
-const std::string &tokenLookupFindByVal(TokenTypes tType)
+inline std::string emptyStr("");
+inline const std::string &tokenLookupFindByVal(TokenTypes tType)
 {
     for (auto it = tokenLookup.begin(); it != tokenLookup.end(); ++it)
         if (it->second == tType)
@@ -326,4 +302,6 @@ const std::string &tokenLookupFindByVal(TokenTypes tType)
 
     return emptyStr;
 }
+#endif
+
 #endif

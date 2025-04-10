@@ -38,7 +38,7 @@ private:
 
 public:
 
-    static void loadSysLibIdents(lexerState &lexState)
+    static void loadSysLibIdents(LexerState &lexState)
     {
         lexState.identifiers.push_back("Array");
         lexState.identifiers.push_back("new");
@@ -107,7 +107,7 @@ public:
         return curLine;
     }
 
-    bool lexNextLine(std::ifstream *jackFile, lexerState &lexState)
+    bool lexNextLine(std::ifstream *jackFile, LexerState &lexState)
     {
         std::string line;
         if (!std::getline(*jackFile, line))
@@ -119,7 +119,7 @@ public:
         return lexLine(line, lexState);
     }
 
-    void initStateBeh(UsefulString &ustr, lexerState &lexState)
+    void initStateBeh(UsefulString &ustr, LexerState &lexState)
     {
         ustr.skipSpaces();
         if (ustr.isEol())
@@ -147,7 +147,7 @@ public:
             lexState.fsmCurState = LexFsmStates::sSYMBOL;
         }
     }
-    void lettersStateBeh(UsefulString &ustr, lexerState &lexState)
+    void lettersStateBeh(UsefulString &ustr, LexerState &lexState)
     {
         if (ustr.isEol())
         {
@@ -174,7 +174,7 @@ public:
             lexState.fsmCurState = LexFsmStates::sSYMBOL;
         }
     }
-    void digitsAfterAlphaStateBeh(UsefulString &ustr, lexerState &lexState)
+    void digitsAfterAlphaStateBeh(UsefulString &ustr, LexerState &lexState)
     {
         if (ustr.isEol())
         {
@@ -201,7 +201,7 @@ public:
             lexState.fsmCurState = LexFsmStates::sSYMBOL;
         }
     }
-    void digitsStateBeh(UsefulString &ustr, lexerState &lexState)
+    void digitsStateBeh(UsefulString &ustr, LexerState &lexState)
     {
         if (ustr.isEol())
         {
@@ -223,7 +223,7 @@ public:
         }
     }
 
-    void handleBuffer(lexerState &lexState)
+    void handleBuffer(LexerState &lexState)
     {
         std::string inBuff(lexState.buffer, lexState.bIdx);
         tokenMapIter it = tokenLookup.find(inBuff);
@@ -272,7 +272,7 @@ public:
             lexState.lastOperTermIsOper = false;
     }
 
-    void symbolStateBeh(UsefulString &ustr, lexerState &lexState)
+    void symbolStateBeh(UsefulString &ustr, LexerState &lexState)
     {
         if (!lexState.buffEmpty())
         {
@@ -358,7 +358,7 @@ public:
         lexState.fsmCurState = LexFsmStates::sSYMBOL;
     }
 
-    void commentStateBeh(UsefulString &ustr, lexerState &lexState)
+    void commentStateBeh(UsefulString &ustr, LexerState &lexState)
     {
         if (ustr.isEol())
         {
@@ -391,7 +391,7 @@ public:
         }
     }
 
-    void mlineCommentStateBeh(UsefulString &ustr, lexerState &lexState)
+    void mlineCommentStateBeh(UsefulString &ustr, LexerState &lexState)
     {
         if (ustr.isEol())
         {
@@ -431,7 +431,7 @@ public:
         }
     }
 
-    bool lexLine(const std::string &line, lexerState &lexState)
+    bool lexLine(const std::string &line, LexerState &lexState)
     {
         UsefulString ustr(line);
 
@@ -496,7 +496,7 @@ public:
     }
 };
 
-bool tokenize(const std::string &filePath, Lexer &lexer, lexerState &lexState)
+bool tokenize(const std::string &filePath, Lexer &lexer, LexerState &lexState)
 {
     #ifdef LEXER_DEBUG
     auto printTokens = [](const tokensVect &tokens)
@@ -557,7 +557,7 @@ bool tokenize(const std::string &filePath, Lexer &lexer, lexerState &lexState)
 bool compilerCtrl(const char *pathIn, const char *pathOut)
 {
     Lexer lexer;
-    lexerState lexState;
+    LexerState lexState;
     Lexer::loadSysLibIdents(lexState);
 
     unsigned arrayLib_className_id = 0;
