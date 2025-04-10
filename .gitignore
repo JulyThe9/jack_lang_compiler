@@ -1,5 +1,5 @@
 #ignore all
-/*
+*
 
 #except for .cpp and .h files
 # and .gitignore
@@ -16,3 +16,6 @@
 /inc/*
 !/inc/*.cpp
 !/inc/*.h
+
+!Makefile
+
