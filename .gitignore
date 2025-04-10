@@ -1,7 +1,18 @@
-./*.*
-./*/*.cpp
-!./*/*.cpp
-!./*/*.h
+#ignore all
+/*
+
+#except for .cpp and .h files
+# and .gitignore
 !*.cpp
 !*.h
-!.gitignore
+!*.gitignore
+
+!/src/
+/src/*
+!/src/*.cpp
+!/src/*.h
+
+!/inc/
+/inc/*
+!/inc/*.cpp
+!/inc/*.h
