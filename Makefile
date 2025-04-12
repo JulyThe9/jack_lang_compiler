@@ -50,7 +50,7 @@ clean_all: clean
 # Usage: make run FILE=<filename>
 run:
 	@if [ -n "$$src" ]; then \
-		$(EXEC) "$(SAMPLES_DIR)/$$src" "./res"; \
+		$(EXEC) "$(SAMPLES_DIR)/$$src"; \
 	else \
 		echo "Please provide src=<filename>"; \
 	fi
@@ -58,6 +58,7 @@ run:
 	mv *.vm $(SAMPLES_DIR)/
 	
 
-# Usage: make plot_ast FILE=<filename>
+# Usage: make plot_ast file=<filename>
 plot_ast:
-	@python3 $(MISC_DIR)/drawAST.py $(BUILD_DIR)/$(FILE) > $(BUILD_DIR)/ast_output.txt
+	@file=$${file:-ast_nodes}; \
+	python3 $(MISC_DIR)/drawAST.py $(BUILD_DIR)/$$file $(BUILD_DIR)/ast_tree.png
