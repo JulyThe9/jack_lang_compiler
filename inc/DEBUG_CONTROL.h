@@ -2,6 +2,7 @@
 #define _DEBUG_CONTROL_
 
 
+#define LOGGING
 #define DEBUG
 #define ERR_DEBUG
 #define LEXER_DEBUG_m

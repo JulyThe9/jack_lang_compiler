@@ -7,6 +7,7 @@
 #include <filesystem>
 #include <cassert>
 #include <algorithm>
+#include <filesystem>
 
 #include "Utils.h"
 #include "JackCompilerTypes.h"
@@ -554,7 +555,7 @@ bool tokenize(const std::string &filePath, Lexer &lexer, LexerState &lexState)
     return true;
 }
 
-bool compilerCtrl(const char *pathIn, const char *pathOut)
+bool compilerCtrl(const char* execPath, const char *pathIn)
 {
     Lexer lexer;
     LexerState lexState;
@@ -599,6 +600,23 @@ bool compilerCtrl(const char *pathIn, const char *pathOut)
     #ifdef DEBUG
         parser.printAST();
     #endif
+    #ifdef LOGGING
+        namespace fs = std::filesystem;
+        // Get the directory where the executable is located
+        fs::path exe_dir = fs::absolute(fs::path(execPath)).parent_path();
+        // Create a file in the same directory
+        std::string f = "ast_nodes";
+        fs::path file_path = exe_dir / f;
+        std::ofstream out_file(file_path);
+
+        std::cout << "Logging ast nodes to file: " << f << '\n';
+        std::streambuf* original_cout_buffer = std::cout.rdbuf();
+        std::cout.rdbuf(out_file.rdbuf());
+        parser.printAST();
+        // Restore std::cout to the original buffer (console)
+        std::cout.rdbuf(original_cout_buffer);
+        std::cout << "Logging finished\n";
+    #endif
         generator.generateAndWrite(astRoot);
 
         parser.resetState();
@@ -611,10 +629,10 @@ bool compilerCtrl(const char *pathIn, const char *pathOut)
 
 int main(int argc, char *argv[])
 {
-    if (argc < 3)
+    if (argc < 2)
         return 1;
 
-    if (!compilerCtrl(argv[1], argv[2]))
+    if (!compilerCtrl(argv[0], argv[1]))
     {
         return 1;
     }
