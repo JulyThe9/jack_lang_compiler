@@ -43,9 +43,21 @@ clean:
 
 clean_all: clean
 	@echo "Deleting files..."
-	find $(ROOT_DIR) $(SRC_DIR) $(INC_DIR) -type f ! -name "*.cpp" ! -name "*.h" ! -name "README.md" -exec echo Deleting: {} \; -exec rm {} \;
-	find $(SAMPLES_DIR) -type f ! -name "*.jack" ! -name "*.vm" -exec echo Deleting: {} \; -exec rm {} \;
-	@echo "Deletion complete."
+
+	@find $(ROOT_DIR) $(SRC_DIR) $(INC_DIR) -maxdepth 1 -type f ! -name "Makefile" ! -name ".*" ! -name "*.cpp" ! -name "*.h" \
+		! -name "README.md" -exec echo Deleting: {} \; -exec rm {} \;
+
+	@find $(SAMPLES_DIR) -maxdepth 1 -type f ! -name "Makefile" ! -name "*.jack" ! -name "*.vm" \
+		-exec echo Deleting: {} \; -exec rm {} \;
+
+	@echo "Deletion complete"
+
+list_clean_all:
+	@find $(ROOT_DIR) $(SRC_DIR) $(INC_DIR) -maxdepth 1 -type f ! -name "Makefile" ! -name ".*" ! -name "*.cpp" ! -name "*.h" \
+		! -name "README.md" -exec echo To be deleted: {} \;
+
+	@find $(SAMPLES_DIR) -maxdepth 1 -type f ! -name "Makefile" ! -name "*.jack" ! -name "*.vm" \
+		-exec echo To be deleted: {} \;
 
 # Usage: make run FILE=<filename>
 run:
