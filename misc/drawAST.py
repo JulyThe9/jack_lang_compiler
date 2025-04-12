@@ -5,7 +5,7 @@ import sys
 
 def parse_ast(file_path):
     nodes = {}
-    
+    root_node_id = 0
     content = ""
     try:
         with open(file_path, 'r') as file:
@@ -42,6 +42,8 @@ def parse_ast(file_path):
         # Create the node if it doesn't exist
         if node_id not in nodes:
             nodes[node_id] = Node(label)
+            if node_type == "ROOT":
+                root_node_id = node_id
         else:
             # Update existing node if it was a placeholder
             nodes[node_id].name = label
@@ -59,7 +61,7 @@ def parse_ast(file_path):
                     if nodes[child_id].parent is None:
                         nodes[child_id].parent = nodes[node_id]
     
-    return nodes.get(0, None)  # Return root node
+    return nodes.get(root_node_id, None)  # Return root node
 
 def visualize_ast(input_file, output_image=None):
     root = parse_ast(input_file)

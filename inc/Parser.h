@@ -45,8 +45,7 @@ private:
     bool parseFuncPars(ParserState &pState);
 
 public:
-    void loadSysLibSymbols(unsigned int className_id, unsigned int funcName_id, 
-        bool isMethod, bool isCtor, bool arrayClassAdding = false);
+    void loadArrSysClass(unsigned int arrayLib_className_id);
 
     bool initStateBeh(ParserState &pState);
 

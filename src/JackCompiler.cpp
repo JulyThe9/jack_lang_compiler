@@ -39,17 +39,13 @@ private:
 
 public:
 
-    static void loadSysLibIdents(LexerState &lexState)
+    static int addKeyword(LexerState &lexState, std::string ident)
     {
-        lexState.identifiers.push_back("Array");
-        lexState.identifiers.push_back("new");
-        lexState.identifiers.push_back("this");
-        lexState.identifiers.push_back("Screen");
-        lexState.identifiers.push_back("setColor");
-        lexState.identifiers.push_back("drawRectangle");
+        lexState.identifiers.push_back(ident);
+        return lexState.identifiers.size() - 1;
     }
 
-    bool init(const char *path)
+    void addFilesFromPath(const char *path)
     {
         std::error_code ec;
         if (fs::is_directory(path, ec))
@@ -62,9 +58,19 @@ public:
             }
         }
         else
-        {
             filePaths.push_back(path);
-        }
+    }
+
+    bool init(const char *srcPath, const char *libsPath)
+    {
+        // first libraries
+        // checking null or empty
+        if (libsPath != NULL && libsPath[0] != '\0')
+            addFilesFromPath(libsPath);
+
+        // then sources
+        addFilesFromPath(srcPath);
+        
         return true;
     }
 
@@ -555,28 +561,19 @@ bool tokenize(const std::string &filePath, Lexer &lexer, LexerState &lexState)
     return true;
 }
 
-bool compilerCtrl(const char* execPath, const char *pathIn)
+bool compilerCtrl(const char *execPath, const char *pathIn, const char *libsPath)
 {
     Lexer lexer;
     LexerState lexState;
-    Lexer::loadSysLibIdents(lexState);
 
-    unsigned arrayLib_className_id = 0;
-    unsigned newName_id = 1;
-    unsigned thisName_id = 2;
-    unsigned screenLib_className_id = 3;
-    unsigned setColorName_id = 4;
-    unsigned drawRectangleName_id = 5;
+    const unsigned int arrayLib_className_id = Lexer::addKeyword(lexState, "Array");
 
     Parser parser;
-    parser.thisNameID = thisName_id;
-    // TODO: the whole loading is temp solution
-    parser.loadSysLibSymbols(arrayLib_className_id, newName_id, false, true, true);
+    // for implicit argument to all class methods, is in a way a "variable name"
+    parser.thisNameID = Lexer::addKeyword(lexState, "this");
+    parser.loadArrSysClass(arrayLib_className_id);
 
-    parser.loadSysLibSymbols(screenLib_className_id, setColorName_id, false, false);
-    parser.loadSysLibSymbols(screenLib_className_id, drawRectangleName_id, false, false);
-
-    if (!lexer.init(pathIn))
+    if (!lexer.init(pathIn, libsPath))
     {
         // TODO: error
         return false;
@@ -594,12 +591,13 @@ bool compilerCtrl(const char* execPath, const char *pathIn)
 
 #ifndef LEXER_ONLY
 
-        Generator generator(lexer.getCurFileName(), lexState.identifiers);
         auto *astRoot = parser.buildAST(lexState.tokens, lexState.identifiers, tokensOffset);
         tokensOffset = lexState.tokens.size();
+
     #ifdef DEBUG
         parser.printAST();
     #endif
+
     #ifdef LOGGING
         namespace fs = std::filesystem;
         // Get the directory where the executable is located
@@ -617,6 +615,8 @@ bool compilerCtrl(const char* execPath, const char *pathIn)
         std::cout.rdbuf(original_cout_buffer);
         std::cout << "Logging finished\n";
     #endif
+
+        Generator generator(lexer.getCurFileName(), lexState.identifiers);
         generator.generateAndWrite(astRoot);
 
         parser.resetState();
@@ -632,7 +632,13 @@ int main(int argc, char *argv[])
     if (argc < 2)
         return 1;
 
-    if (!compilerCtrl(argv[0], argv[1]))
+    std::string libsPath = "";
+    if (argc >= 3)
+    {
+        libsPath = argv[2];
+    }
+
+    if (!compilerCtrl(argv[0], argv[1], argv[2]))
     {
         return 1;
     }

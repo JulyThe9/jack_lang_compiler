@@ -138,28 +138,15 @@ bool Parser::parseFuncPars(ParserState &pState)
         success ? true : pState.fsmTerminate(false);
 }
 
-void Parser::loadSysLibSymbols(unsigned int className_id, unsigned int funcName_id, 
-    bool isMethod, bool isCtor, bool arrayClassAdding)
+void Parser::loadArrSysClass(unsigned int arrayLib_className_id)
 {
     unsigned int classID = 0;    
-    auto [classExists, idx] = pState.containsClass(className_id);
-    if (classExists)
-    {
-        classID = idx;               
-    }
-    else
-    {
-        classID = pState.addClass(className_id, false);
-    }
+    auto [classExists, idx] = pState.containsClass(arrayLib_className_id);
 
-    if (arrayClassAdding)
-    {
-        pState.arrayLib_classID = classID;
-    }
-    // see ctorDefStateBeh for details
-    pState.addFuncToClass(classID, funcName_id, 
-        (arrayClassAdding ? classID_to_ldType(classID) : LangDataTypes::ldVOID), 
-        isMethod, isCtor);
+    if (classExists)
+        pState.arrayLib_classID = idx;               
+    else
+        pState.arrayLib_classID = pState.addClass(arrayLib_className_id, false);
 }
 
 bool Parser::initStateBeh(ParserState &pState)
@@ -261,6 +248,12 @@ void Parser::classDecideStateBeh(ParserState &pState)
             break;             
         case TokenTypes::tRCURL:
             pState.fsmCurState = ParseFsmStates::sBLOCK_CLOSE;
+            break;
+        default:
+#ifdef ERR_DEBUG
+            std::cerr << "ERR: UNKNOWN sCLASS_DECIDE outgoing state: " << (unsigned int)token.tType << '\n';
+#endif
+            pState.fsmTerminate(false);
             break;
     }
 }
@@ -680,6 +673,17 @@ bool Parser::processIdentifier(TokenData &identToken, AstNode *&resNode, bool al
         }
         else
         {
+            // NOTE: edge case when it is a non-primitive variable
+            // being used in an expressionn as such: in return statement
+            auto [dummy1, prevToken] = pState.lookBackGet();
+            auto [dummy2, nextToken] = pState.lookAheadGet();
+            if (prevToken.tType == TokenTypes::tRETURN &&
+                nextToken.tType == TokenTypes::tSEMICOLON)
+            {
+                resNode = ALLOC_AST_NODE(varScopeToAccessType(varScope), varIdx);
+                return true;
+            }
+
             // do not expect function, but expect method,
             // we are calling on object of class
             FuncMethodData funcMethodData(false, true, varScopeToAccessType(varScope), varIdx);

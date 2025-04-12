@@ -441,6 +441,14 @@ TokenData &ParserState::advanceAndGet(unsigned int step)
     return getCurToken();
 }
 
+std::tuple<bool, TokenData&> ParserState::lookBackGet()
+{
+    if (curTokenId == 0)
+        return {false, tokens->at(0)};
+
+    return {true, tokens->at(curTokenId - 1)};
+}
+
 std::tuple<bool, TokenData&> ParserState::lookAheadGet()
 {
     if (curTokenId + 1 >= tokens->size())

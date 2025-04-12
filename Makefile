@@ -59,18 +59,18 @@ list_clean_all:
 	@find $(SAMPLES_DIR) -maxdepth 1 -type f ! -name "Makefile" ! -name "*.jack" ! -name "*.vm" \
 		-exec echo To be deleted: {} \;
 
-# Usage: make run FILE=<filename>
+# Usage: make run src=<sources_path> libs=<libs_path> (optional)
 run:
-	@if [ -n "$$src" ]; then \
-		$(EXEC) "$(SAMPLES_DIR)/$$src"; \
+	@if [ -n "$src" ]; then \
+		$(EXEC) "$(SAMPLES_DIR)/$$src" "$$libs"; \
 	else \
-		echo "Please provide src=<filename>"; \
+		echo "Please provide src=<source_path>"; \
 	fi
 
 	mv *.vm $(SAMPLES_DIR)/
 	
 
-# Usage: make plot_ast file=<filename>
+# Usage: make plot_ast file=<filename> (optional)
 plot_ast:
 	@file=$${file:-ast_nodes}; \
 	python3 $(MISC_DIR)/drawAST.py $(BUILD_DIR)/$$file $(BUILD_DIR)/ast_tree.png

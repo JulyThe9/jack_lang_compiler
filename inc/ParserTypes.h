@@ -498,6 +498,7 @@ public:
 
     bool declaringLocals = false;
 
+    // TODO: not needed?
     unsigned int arrayLib_classID = 0;
 
     inline const std::vector<ClassData> &getClasses() const
@@ -585,6 +586,7 @@ public:
 
     TokenData &advanceAndGet(unsigned int step = 1);
 
+    std::tuple<bool, TokenData&> lookBackGet();
     std::tuple<bool, TokenData&> lookAheadGet();
 
     bool fsmTerminate(bool finishedCorrectly);
