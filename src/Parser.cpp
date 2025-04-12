@@ -514,6 +514,11 @@ bool Parser::funcDoCallStateBeh(ParserState &pState)
 
     auto *stackTop = pState.getStackTop();
     stackTop->addChild(ALLOC_AST_NODE(AstNodeTypes::aTEMP_VAR_WRITE, 0));
+
+    // done with the do-call, no more children nodes coming,
+    // so popping from the stack
+    pState.popStackTop();
+
     pState.advance();
     pState.fsmCurState = ParseFsmStates::sSTATEMENT_DECIDE;
     
