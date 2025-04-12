@@ -1,0 +1,8 @@
+class Screen {
+    function void setColor(boolean b) { }
+    function void drawPixel(int x, int y) { }
+    function void drawLine(int x1, int y1, int x2, int y2) { }
+    function void drawRectangle(int x, int y, int width, int height) { }
+    function void drawCircle(int x, int y, int r) { }
+    function void clearScreen() { }
+}

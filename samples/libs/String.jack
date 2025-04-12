@@ -1,0 +1,11 @@
+class String {
+    constructor String new(int length) { return this; }
+    method void dispose() { }
+    method int length() { return 0; }
+    method char charAt(int i) { return 0; }
+    method void setCharAt(int i, char c) { }
+    method String appendChar(char c) { return this; }
+    method void eraseLastChar() { }
+    method int intValue() { return 0; }
+    method void setInt(int j) { }
+}

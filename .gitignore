@@ -24,5 +24,9 @@
 /samples/*
 !/samples/*.jack
 
+!/samples/libs
+/samples/libs/*
+!samples/libs/*.jack
+
 !Makefile
 

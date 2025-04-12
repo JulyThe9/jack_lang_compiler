@@ -1,0 +1,4 @@
+class Memory {
+    function int alloc(int size) { return 0; }
+    function void deAlloc(int block) { }
+}
