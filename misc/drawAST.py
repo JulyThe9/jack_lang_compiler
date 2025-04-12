@@ -6,8 +6,12 @@ import sys
 def parse_ast(file_path):
     nodes = {}
     
-    with open(file_path, 'r') as file:
-        content = file.read()
+    content = ""
+    try:
+        with open(file_path, 'r') as file:
+            content = file.read()
+    except Exception as e:
+        print(f"Failed to open a file: {e}")
     
     # Split the input into node sections
     node_sections = re.split(r'\n\n(?=AstNode #)', content.strip())
