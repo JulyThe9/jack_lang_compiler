@@ -1,0 +1,22 @@
+class Cell
+{
+    field int i, j;
+    field int scaleI, scaleJ;
+    field int cellSize;
+
+    field int state, newstate;
+
+    method void checkDraw(int cellSize) 
+    {
+        if (state = 1)
+        {
+            do Screen.setColor(true);
+        }
+        else
+        {
+            do Screen.setColor(false);
+        }
+        do Screen.drawRectangle(scaleJ, scaleI, scaleJ + cellSize, scaleI + cellSize);
+        return;
+    }
+}

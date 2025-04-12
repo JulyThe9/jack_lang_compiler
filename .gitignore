@@ -17,5 +17,12 @@
 !/inc/*.cpp
 !/inc/*.h
 
+!/misc/
+!/misc/*
+
+!/samples/
+/samples/*
+!/samples/*.jack
+
 !Makefile
 
